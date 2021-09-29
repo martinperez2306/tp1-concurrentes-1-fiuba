@@ -26,6 +26,12 @@ mod reserve_module {
                 }
             }
         }
+
+        for child in children {
+            // Wait for the thread to finish. Returns a result.
+            let _ = child.join();
+        }
+        println!("Reserve processing finished");
     }
 
     // The output is wrapped in a Result to allow matching on errors
