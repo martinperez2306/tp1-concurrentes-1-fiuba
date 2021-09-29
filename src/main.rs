@@ -6,8 +6,9 @@ mod reserve_module {
     use std::path::Path;
     use std::thread;
     
-    pub struct ReserveController {
-
+    pub struct Reserve {
+        airline: String,
+        hotel: String
     }
 
     pub fn parse_reserves(filename: &String){
@@ -16,9 +17,11 @@ mod reserve_module {
         if let Ok(lines) = read_lines(filename) {
             // Consumes the iterator, returns an (Optional) String
             for line in lines {
-                if let Ok(reserva) = line {
+                if let Ok(reserve_line) = line {
+                    let reserve_split: Vec<&str> = reserve_line.split(" ").collect();
+                    let reserve = Reserve{airline: reserve_split[0].to_string(), hotel: reserve_split[1].to_string()};
                     children.push(thread::spawn(move || {
-                        println!("A new threas is reading the line {}", reserva);
+                        println!("A new thread is reading the reserve with Airline {} and Hotel {}", reserve.airline, reserve.hotel);
                     }));
                 }
             }
