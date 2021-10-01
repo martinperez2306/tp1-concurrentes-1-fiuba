@@ -1,3 +1,9 @@
+use std::env;
+mod reserve_controller;
+
 fn main() {
-    println!("Hello, world!");
+
+    let args: Vec<String> = env::args().collect();
+    let filename = &args[1];
+    reserve_controller::parse_reserves(filename);
 }
