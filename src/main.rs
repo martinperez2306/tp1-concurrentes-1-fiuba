@@ -1,6 +1,8 @@
+mod reserve_controller;
 mod webservice_aerolineas;
 mod webservice_hoteles;
 use std::{thread, time::Duration};
+use std::env;
 
 const DELAY_BETWEEN_RETRIES: u64 = 5;
 
@@ -21,7 +23,13 @@ fn llamar_ws_hoteles() {
     println!("El hotel aprobó la reserva!");
 }
 
+
+
 fn main() {
+
+    let args: Vec<String> = env::args().collect();
+    let filename = &args[1];
+    reserve_controller::parse_reserves(filename);
     println!("Solicitando reserva al ws de aerolineas");
     llamar_ws_aerolineas();
     println!("Solicitando reserva al ws de hoteles");
