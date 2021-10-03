@@ -4,6 +4,8 @@ use std::path::Path;
 use std::thread;
 
 pub struct Reserve {
+    origin: String,
+    destination: String,
     airline: String,
     hotel: String
 }
@@ -16,7 +18,10 @@ pub fn parse_reserves(filename: &String){
         for line in lines {
             if let Ok(reserve_line) = line {
                 let reserve_split: Vec<&str> = reserve_line.split(" ").collect();
-                let reserve = Reserve{airline: reserve_split[0].to_string(), hotel: reserve_split[1].to_string()};
+                let reserve = Reserve{origin: reserve_split[0].to_string(),
+                    destination: reserve_split[1].to_string(),
+                    airline: reserve_split[2].to_string(),
+                    hotel: reserve_split[3].to_string()};
                 children.push(thread::spawn(move || {
                     println!("A new thread is reading the reserve with Airline {} and Hotel {}", reserve.airline, reserve.hotel);
                 }));
