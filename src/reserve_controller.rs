@@ -12,6 +12,7 @@ pub struct Reserve {
     hotel: String
 }
 
+const NO_HOTEL: &str = "-";
 const DELAY_BETWEEN_RETRIES: u64 = 5;
 
 pub fn reserve_airline(origin: &str, destination: &str){
@@ -34,7 +35,9 @@ pub fn reserve_hotel(hotel: &str){
 pub fn process_reserve(reserve: Reserve){
     println!("A new thread is reading the reserve with Airline {} and Hotel {}", reserve.airline, reserve.hotel);
     reserve_airline(&reserve.origin, &reserve.destination);
-    reserve_hotel(&reserve.hotel);
+    if reserve.hotel != NO_HOTEL{
+        reserve_hotel(&reserve.hotel);
+    }
 }
 
 pub fn parse_reserves(filename: &str){
