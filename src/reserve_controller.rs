@@ -1,13 +1,40 @@
+use crate::webservice_aerolineas;
+use crate::webservice_hoteles;
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
-use std::thread;
+use std::{thread, time::Duration};
 
 pub struct Reserve {
     origin: String,
     destination: String,
     airline: String,
     hotel: String
+}
+
+const DELAY_BETWEEN_RETRIES: u64 = 5;
+
+pub fn reserve_airline(origin: &String, destination: &String){
+    let approved: bool = webservice_aerolineas::reservar(origin.clone(), destination.clone());
+    if !approved {
+        println!("La aerolinea no aprobó la reserva. Reintentando en {} segundos", DELAY_BETWEEN_RETRIES);
+        thread::sleep(Duration::from_millis(DELAY_BETWEEN_RETRIES*1000));
+        println!("Reintentando...");
+        reserve_airline(origin, destination);
+        return;
+    }
+    println!("La aerolinea aprobó la reserva con origen: {} y destino: {}", origin, destination);
+}
+
+pub fn reserve_hotel(hotel: &String){
+    webservice_hoteles::reservar(hotel.clone());
+    println!("El servicio de hoteles aprobó la reserva en: {}", hotel);
+}
+
+pub fn process_reserve(reserve: Reserve){
+    println!("A new thread is reading the reserve with Airline {} and Hotel {}", reserve.airline, reserve.hotel);
+    reserve_airline(&reserve.origin, &reserve.destination);
+    reserve_hotel(&reserve.hotel);
 }
 
 pub fn parse_reserves(filename: &String){
@@ -22,9 +49,7 @@ pub fn parse_reserves(filename: &String){
                     destination: reserve_split[1].to_string(),
                     airline: reserve_split[2].to_string(),
                     hotel: reserve_split[3].to_string()};
-                children.push(thread::spawn(move || {
-                    println!("A new thread is reading the reserve with Airline {} and Hotel {}", reserve.airline, reserve.hotel);
-                }));
+                children.push(thread::spawn(move || process_reserve(reserve)));
             }
         }
     }
