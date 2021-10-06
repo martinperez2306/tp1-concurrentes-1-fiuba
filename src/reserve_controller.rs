@@ -1,43 +1,20 @@
+mod model;
+
 use crate::webservice_aerolineas;
 use crate::webservice_hoteles;
+use model::reserve::Reserve;
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
-use std::{thread, time::Duration};
-
-pub struct Reserve {
-    origin: String,
-    destination: String,
-    airline: String,
-    hotel: String
-}
+use std::thread;
+use crate::reserve_controller::model::flight::Flight;
+use crate::reserve_controller::model::package::Package;
 
 const NO_HOTEL: &str = "-";
-const DELAY_BETWEEN_RETRIES: u64 = 5;
 
-pub fn reserve_airline(origin: &str, destination: &str){
-    let approved: bool = webservice_aerolineas::reservar(origin.to_string(), destination.to_string());
-    if !approved {
-        println!("La aerolinea no aprobó la reserva. Reintentando en {} segundos", DELAY_BETWEEN_RETRIES);
-        thread::sleep(Duration::from_millis(DELAY_BETWEEN_RETRIES*1000));
-        println!("Reintentando...");
-        reserve_airline(origin, destination);
-        return;
-    }
-    println!("La aerolinea aprobó la reserva con origen: {} y destino: {}", origin, destination);
-}
-
-pub fn reserve_hotel(hotel: &str){
-    webservice_hoteles::reservar(hotel.to_string());
-    println!("El servicio de hoteles aprobó la reserva en: {}", hotel);
-}
-
-pub fn process_reserve(reserve: Reserve){
-    println!("A new thread is reading the reserve with Airline {} and Hotel {}", reserve.airline, reserve.hotel);
-    reserve_airline(&reserve.origin, &reserve.destination);
-    if reserve.hotel != NO_HOTEL{
-        reserve_hotel(&reserve.hotel);
-    }
+pub fn process_reserve(reserve: impl Reserve){
+    reserve.reserve_airline(&webservice_aerolineas::reservar);
+    reserve.reserve_hotel(&webservice_hoteles::reservar);
 }
 
 pub fn parse_reserves(filename: &str){
@@ -47,11 +24,15 @@ pub fn parse_reserves(filename: &str){
         // Consumes the iterator, returns an (Optional) String
         for reserve_line in lines.into_iter().flatten() {
             let reserve_split: Vec<&str> = reserve_line.split(' ').collect();
-            let reserve = Reserve{origin: reserve_split[0].to_string(),
-                destination: reserve_split[1].to_string(),
-                airline: reserve_split[2].to_string(),
-                hotel: reserve_split[3].to_string()};
-            children.push(thread::spawn(move || process_reserve(reserve)));
+            let origin = reserve_split[0].to_string();
+            let destination = reserve_split[1].to_string();
+            let airline = reserve_split[2].to_string();
+            let hotel = reserve_split[3].to_string();
+            if hotel == NO_HOTEL {
+                children.push(thread::spawn(move || process_reserve(Flight::new(origin, destination, airline))));
+            } else {
+                children.push(thread::spawn(move || process_reserve(Package::new(origin, destination, airline, hotel))));
+            }
         }
     }
 
