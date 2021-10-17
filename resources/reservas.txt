@@ -1,10 +1,10 @@
-Aerolineas_Argentinas Sheraton
-Aerolineas_Argentinas Galaga
-Aerolineas_Argentinas Hotel_Martinez
-Aerolineas_Argentinas Sangusa
-Aerolineas_Argentinas Echo
-Aerolineas_Argentinas Pilar
-Aerolineas_Argentinas Hotel7
-Aerolineas_Argentinas Hotel8
-Aerolineas_Argentinas Hotel9
-Aerolineas_Argentinas Hotel10
+EZE MDQ Aerolineas_Argentinas Sheraton
+EZE MDQ Aerolineas_Argentinas Galaga
+EZE MDQ Aerolineas_Argentinas Hotel_Martinez
+EZE MDQ Aerolineas_Argentinas -
+EZE MDQ Aerolineas_Argentinas -
+EZE MDQ Aerolineas_Argentinas Pilar
+EZE MDQ Aerolineas_Argentinas Hotel7
+EZE MDQ Aerolineas_Argentinas Hotel8
+EZE MDQ Aerolineas_Argentinas Hotel9
+EZE MDQ Aerolineas_Argentinas Hotel10
