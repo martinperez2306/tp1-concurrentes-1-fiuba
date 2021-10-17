@@ -13,6 +13,7 @@ use std_semaphore::Semaphore;
 use crate::reserve_controller::model::flight::Flight;
 use crate::reserve_controller::model::logger;
 use crate::reserve_controller::model::package::Package;
+use crate::reserve_controller::model::stats::Stats;
 
 const NO_HOTEL: &str = "-";
 const DELAY_BETWEEN_RETRIES_SECONDS: u64 = 5;
@@ -65,6 +66,7 @@ pub fn parse_reserves(filename: &str){
     let mut children = vec![];
     let airline_sem = Arc::new(Semaphore::new(WEBSERVICE_AIRLINE_LIMIT));
     let hotel_sem = Arc::new(Semaphore::new(WEBSERVICE_HOTEL_LIMIT));
+    let stats: Stats = Stats::new();
     if let Ok(lines) = read_lines(filename) {
         // Consumes the iterator, returns an (Optional) String
         for reserve_line in lines.into_iter().flatten() {
