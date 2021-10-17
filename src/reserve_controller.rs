@@ -1,6 +1,7 @@
 mod model;
 extern crate std_semaphore;
 
+use crate::reserve_controller::model::route::Route;
 use crate::webservice_aerolineas;
 use crate::webservice_hoteles;
 use std::fs::File;
@@ -66,7 +67,7 @@ pub fn parse_reserves(filename: &str){
     let mut children = vec![];
     let airline_sem = Arc::new(Semaphore::new(WEBSERVICE_AIRLINE_LIMIT));
     let hotel_sem = Arc::new(Semaphore::new(WEBSERVICE_HOTEL_LIMIT));
-    let stats: Stats = Stats::new();
+    let mut stats: Stats = Stats::new();
     if let Ok(lines) = read_lines(filename) {
         // Consumes the iterator, returns an (Optional) String
         for reserve_line in lines.into_iter().flatten() {
@@ -76,12 +77,14 @@ pub fn parse_reserves(filename: &str){
             let airline = reserve_split[2].to_string();
             let hotel = reserve_split[3].to_string();
             let airline_sem_clone = airline_sem.clone();
+            let route = Route::new(origin.clone(), destination.clone());
             if hotel == NO_HOTEL {
                 children.push(thread::spawn(move || process_flight(&Flight::new(origin, destination, airline), airline_sem_clone)));
             } else {
                 let hotel_sem_clone = hotel_sem.clone();
                 children.push(thread::spawn(move || process_package(&Package::new(origin, destination, airline, hotel), airline_sem_clone, hotel_sem_clone)));
             }
+            stats.increment_route_counter(route);
         }
     }
 
@@ -90,6 +93,7 @@ pub fn parse_reserves(filename: &str){
         let _ = child.join();
     }
     println!("Reserve processing finished");
+    println!("{:?}", stats.get_routes());
 }
 
 // The output is wrapped in a Result to allow matching on errors
