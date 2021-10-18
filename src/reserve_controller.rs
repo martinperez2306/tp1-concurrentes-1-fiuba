@@ -43,7 +43,7 @@ pub fn reserve_hotel(hotel: &str, hotel_sem: &Arc<Semaphore>) {
     logger::log(format!("El servicio de hoteles aprobó la reserva en: {}", hotel));
 }
 
-pub fn process_flight(flight: &Flight, airline_sem: Arc<Semaphore>){
+pub fn process_flight(flight: &Flight, airline_sem: Arc<Semaphore>, stat_mutex: Arc<Mutex<Stats>>){
     let initial_process_time = SystemTime::now();
     let origin = flight.get_origin();
     let destination = flight.get_destination();
@@ -52,10 +52,12 @@ pub fn process_flight(flight: &Flight, airline_sem: Arc<Semaphore>){
     let final_process_time = SystemTime::now();
     let difference = final_process_time.duration_since(initial_process_time)
     .expect("Clock may have gone backwards");
-    println!("La reserva de vuelo se proceso en {:?} segundo(s)", difference);
+    println!("La reserva de vuelo se proceso en {:?} segundo(s)", difference.as_secs());
+    let mut stats_block = stat_mutex.lock().unwrap();
+    stats_block.add_reserve_processing_time(difference.as_secs());
 }
 
-pub fn process_package(package: &Package, airline_sem: Arc<Semaphore>, hotel_sem: Arc<Semaphore>){
+pub fn process_package(package: &Package, airline_sem: Arc<Semaphore>, hotel_sem: Arc<Semaphore>, stat_mutex: Arc<Mutex<Stats>>){
     let initial_process_time = SystemTime::now();
     let mut children = vec![];
     let origin = package.get_origin();
@@ -70,7 +72,9 @@ pub fn process_package(package: &Package, airline_sem: Arc<Semaphore>, hotel_sem
     let final_process_time = SystemTime::now();
     let difference = final_process_time.duration_since(initial_process_time)
     .expect("Clock may have gone backwards");
-    println!("La reserva de paquete se proceso en {:?} segundo(s)", difference);
+    println!("La reserva de paquete se proceso en {:?} segundo(s)", difference.as_secs());
+    let mut stats_block = stat_mutex.lock().unwrap();
+    stats_block.add_reserve_processing_time(difference.as_secs());
 }
 
 pub fn logs_stats(log_stats_mutex: Arc<Mutex<bool>>, stats_mutex: Arc<Mutex<Stats>>){
@@ -99,7 +103,7 @@ pub fn parse_reserves(filename: &str){
     let hotel_sem = Arc::new(Semaphore::new(WEBSERVICE_HOTEL_LIMIT));
     let stats: Stats = Stats::new();
     let stat_mutex = Arc::new(Mutex::new(stats));
-    let stat_mutex_clone = stat_mutex.clone();
+    let stat_mutex_clone = stat_mutex.clone();    
     let log_stats_mutex = Arc::new(Mutex::new(parsing_reserves));
     let log_stats_mutex_clone = log_stats_mutex.clone();
     let stats_thread = thread::spawn(move || logs_stats(log_stats_mutex, stat_mutex));
@@ -114,11 +118,13 @@ pub fn parse_reserves(filename: &str){
             let airline_sem_clone = airline_sem.clone();
             let route = Route::new(origin.clone(), destination.clone());
             let stat_mutex_clone_it = stat_mutex_clone.clone();
+            let stat_mutex_fligth_clone = stat_mutex_clone.clone();
+            let stat_mutex_package_clone = stat_mutex_clone.clone();
             if hotel == NO_HOTEL {
-                children.push(thread::spawn(move || process_flight(&Flight::new(origin, destination, airline), airline_sem_clone)));
+                children.push(thread::spawn(move || process_flight(&Flight::new(origin, destination, airline), airline_sem_clone, stat_mutex_fligth_clone)));
             } else {
                 let hotel_sem_clone = hotel_sem.clone();
-                children.push(thread::spawn(move || process_package(&Package::new(origin, destination, airline, hotel), airline_sem_clone, hotel_sem_clone)));
+                children.push(thread::spawn(move || process_package(&Package::new(origin, destination, airline, hotel), airline_sem_clone, hotel_sem_clone, stat_mutex_package_clone)));
             }
             children.push(thread::spawn(move || increment_stats(stat_mutex_clone_it, route)));
         }
@@ -131,6 +137,9 @@ pub fn parse_reserves(filename: &str){
         *log_stats_lock = false;
         drop(log_stats_lock);
         let _stats_thread_join = stats_thread.join();
+        let stats_block = stat_mutex_clone.lock().unwrap();
+        let avg_reserve_processing_time = stats_block.get_avg_reserve_processing_time();
+        println!("El tiempo medio de procesamiento de una reserva es {} segundos", avg_reserve_processing_time);
         println!("Procesamiento de Reservas terminado");
     }
 }
