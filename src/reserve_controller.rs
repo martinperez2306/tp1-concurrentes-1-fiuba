@@ -7,7 +7,7 @@ use crate::webservice_hoteles;
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 use std_semaphore::Semaphore;
@@ -20,6 +20,7 @@ const NO_HOTEL: &str = "-";
 const DELAY_BETWEEN_RETRIES_SECONDS: u64 = 5;
 const WEBSERVICE_AIRLINE_LIMIT: isize = 10;
 const WEBSERVICE_HOTEL_LIMIT: isize = 5;
+const STATS_LOG_PERIOD: u64 = 5;
 
 pub fn reserve_airline(origin: &str, destination: &str, airline: &str, airline_sem: &Arc<Semaphore>){
     logger::log(format!("Reservando aerolinea {}", airline));
@@ -62,12 +63,27 @@ pub fn process_package(package: &Package, airline_sem: Arc<Semaphore>, hotel_sem
     }
 }
 
+pub fn logs_stats(stats_mutex: Arc<Mutex<bool>>){
+    let mut processing = true;
+    while processing {
+        println!("VOY A LOGUEAR ESTADISTICAS");
+        thread::sleep(Duration::from_millis(STATS_LOG_PERIOD*1000));
+        let stats_lock = stats_mutex.lock().unwrap();
+        processing = *stats_lock;
+    }
+    println!("TERMINO DE LOGUEAR ESTADISTICAS");
+}
+
 pub fn parse_reserves(filename: &str){
+    let parsing_reserves = true;
     // Make a vector to hold the children which are spawned.
     let mut children = vec![];
     let airline_sem = Arc::new(Semaphore::new(WEBSERVICE_AIRLINE_LIMIT));
     let hotel_sem = Arc::new(Semaphore::new(WEBSERVICE_HOTEL_LIMIT));
+    let stats_mutex = Arc::new(Mutex::new(parsing_reserves));
+    let stats_mutex_clone = stats_mutex.clone();
     let mut stats: Stats = Stats::new();
+    let stats_thread = thread::spawn(move || logs_stats(stats_mutex));
     if let Ok(lines) = read_lines(filename) {
         // Consumes the iterator, returns an (Optional) String
         for reserve_line in lines.into_iter().flatten() {
@@ -87,11 +103,15 @@ pub fn parse_reserves(filename: &str){
             stats.increment_route_counter(route);
         }
     }
-
     for child in children {
         // Wait for the thread to finish. Returns a result.
+        println!("Esperando a que termine el procesamiento");
         let _ = child.join();
     }
+    let mut stats_lock = stats_mutex_clone.lock().unwrap();
+    *stats_lock = false;
+    drop(stats_lock);
+    let _stats_thread_join = stats_thread.join();
     println!("Reserve processing finished");
     println!("{:?}", stats.get_routes());
 }
