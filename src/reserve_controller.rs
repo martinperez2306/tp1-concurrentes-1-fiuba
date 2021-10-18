@@ -9,7 +9,7 @@ use std::io::{self, BufRead};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 use std_semaphore::Semaphore;
 use crate::reserve_controller::model::flight::Flight;
 use crate::reserve_controller::model::logger;
@@ -44,13 +44,19 @@ pub fn reserve_hotel(hotel: &str, hotel_sem: &Arc<Semaphore>) {
 }
 
 pub fn process_flight(flight: &Flight, airline_sem: Arc<Semaphore>){
+    let initial_process_time = SystemTime::now();
     let origin = flight.get_origin();
     let destination = flight.get_destination();
     let airline = flight.get_airline();
     let _ = thread::spawn(move || reserve_airline(&origin, &destination, &airline, &airline_sem)).join();
+    let final_process_time = SystemTime::now();
+    let difference = final_process_time.duration_since(initial_process_time)
+    .expect("Clock may have gone backwards");
+    println!("La reserva de vuelo se proceso en {:?} segundo(s)", difference);
 }
 
 pub fn process_package(package: &Package, airline_sem: Arc<Semaphore>, hotel_sem: Arc<Semaphore>){
+    let initial_process_time = SystemTime::now();
     let mut children = vec![];
     let origin = package.get_origin();
     let destination = package.get_destination();
@@ -61,6 +67,10 @@ pub fn process_package(package: &Package, airline_sem: Arc<Semaphore>, hotel_sem
     for child in children {
         let _ = child.join();
     }
+    let final_process_time = SystemTime::now();
+    let difference = final_process_time.duration_since(initial_process_time)
+    .expect("Clock may have gone backwards");
+    println!("La reserva de paquete se proceso en {:?} segundo(s)", difference);
 }
 
 pub fn logs_stats(log_stats_mutex: Arc<Mutex<bool>>, stats_mutex: Arc<Mutex<Stats>>){
@@ -74,7 +84,6 @@ pub fn logs_stats(log_stats_mutex: Arc<Mutex<bool>>, stats_mutex: Arc<Mutex<Stat
         processing = *log_stats_lock;
         drop(log_stats_lock);
     }
-    println!("TERMINO DE LOGUEAR ESTADISTICAS");
 }
 
 pub fn increment_stats(stat_mutex: Arc<Mutex<Stats>>, route: Route){
