@@ -20,7 +20,7 @@ const NO_HOTEL: &str = "-";
 const DELAY_BETWEEN_RETRIES_SECONDS: u64 = 5;
 const WEBSERVICE_AIRLINE_LIMIT: isize = 10;
 const WEBSERVICE_HOTEL_LIMIT: isize = 5;
-const STATS_LOG_PERIOD: u64 = 5;
+const STATS_LOG_PERIOD: u64 = 1;
 
 pub fn reserve_airline(origin: &str, destination: &str, airline: &str, airline_sem: &Arc<Semaphore>){
     logger::log(format!("Reservando aerolinea {}", airline));
@@ -63,15 +63,23 @@ pub fn process_package(package: &Package, airline_sem: Arc<Semaphore>, hotel_sem
     }
 }
 
-pub fn logs_stats(stats_mutex: Arc<Mutex<bool>>){
+pub fn logs_stats(log_stats_mutex: Arc<Mutex<bool>>, stats_mutex: Arc<Mutex<Stats>>){
     let mut processing = true;
     while processing {
-        println!("VOY A LOGUEAR ESTADISTICAS");
+        let stats_block = stats_mutex.lock().unwrap();
+        println!("{:?}", stats_block.get_routes());
+        drop(stats_block);
         thread::sleep(Duration::from_millis(STATS_LOG_PERIOD*1000));
-        let stats_lock = stats_mutex.lock().unwrap();
-        processing = *stats_lock;
+        let log_stats_lock = log_stats_mutex.lock().unwrap();
+        processing = *log_stats_lock;
+        drop(log_stats_lock);
     }
     println!("TERMINO DE LOGUEAR ESTADISTICAS");
+}
+
+pub fn increment_stats(stat_mutex: Arc<Mutex<Stats>>, route: Route){
+    let mut stats_block = stat_mutex.lock().unwrap();
+    stats_block.increment_route_counter(route);
 }
 
 pub fn parse_reserves(filename: &str){
@@ -80,10 +88,12 @@ pub fn parse_reserves(filename: &str){
     let mut children = vec![];
     let airline_sem = Arc::new(Semaphore::new(WEBSERVICE_AIRLINE_LIMIT));
     let hotel_sem = Arc::new(Semaphore::new(WEBSERVICE_HOTEL_LIMIT));
-    let stats_mutex = Arc::new(Mutex::new(parsing_reserves));
-    let stats_mutex_clone = stats_mutex.clone();
-    let mut stats: Stats = Stats::new();
-    let stats_thread = thread::spawn(move || logs_stats(stats_mutex));
+    let stats: Stats = Stats::new();
+    let stat_mutex = Arc::new(Mutex::new(stats));
+    let stat_mutex_clone = stat_mutex.clone();
+    let log_stats_mutex = Arc::new(Mutex::new(parsing_reserves));
+    let log_stats_mutex_clone = log_stats_mutex.clone();
+    let stats_thread = thread::spawn(move || logs_stats(log_stats_mutex, stat_mutex));
     if let Ok(lines) = read_lines(filename) {
         // Consumes the iterator, returns an (Optional) String
         for reserve_line in lines.into_iter().flatten() {
@@ -94,26 +104,26 @@ pub fn parse_reserves(filename: &str){
             let hotel = reserve_split[3].to_string();
             let airline_sem_clone = airline_sem.clone();
             let route = Route::new(origin.clone(), destination.clone());
+            let stat_mutex_clone_it = stat_mutex_clone.clone();
             if hotel == NO_HOTEL {
                 children.push(thread::spawn(move || process_flight(&Flight::new(origin, destination, airline), airline_sem_clone)));
             } else {
                 let hotel_sem_clone = hotel_sem.clone();
                 children.push(thread::spawn(move || process_package(&Package::new(origin, destination, airline, hotel), airline_sem_clone, hotel_sem_clone)));
             }
-            stats.increment_route_counter(route);
+            children.push(thread::spawn(move || increment_stats(stat_mutex_clone_it, route)));
         }
+        println!("Esperando a que termine el procesamiento de Reservas");
+        for child in children {
+            // Wait for the thread to finish. Returns a result.
+            let _ = child.join();
+        }
+        let mut log_stats_lock = log_stats_mutex_clone.lock().unwrap();
+        *log_stats_lock = false;
+        drop(log_stats_lock);
+        let _stats_thread_join = stats_thread.join();
+        println!("Procesamiento de Reservas terminado");
     }
-    for child in children {
-        // Wait for the thread to finish. Returns a result.
-        println!("Esperando a que termine el procesamiento");
-        let _ = child.join();
-    }
-    let mut stats_lock = stats_mutex_clone.lock().unwrap();
-    *stats_lock = false;
-    drop(stats_lock);
-    let _stats_thread_join = stats_thread.join();
-    println!("Reserve processing finished");
-    println!("{:?}", stats.get_routes());
 }
 
 // The output is wrapped in a Result to allow matching on errors
