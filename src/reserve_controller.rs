@@ -4,6 +4,7 @@ extern crate std_semaphore;
 use crate::reserve_controller::model::route::Route;
 use crate::webservice_aerolineas;
 use crate::webservice_hoteles;
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
@@ -20,7 +21,7 @@ const NO_HOTEL: &str = "-";
 const DELAY_BETWEEN_RETRIES_SECONDS: u64 = 5;
 const WEBSERVICE_AIRLINE_LIMIT: isize = 10;
 const WEBSERVICE_HOTEL_LIMIT: isize = 5;
-const STATS_LOG_PERIOD: u64 = 1;
+const STATS_LOG_PERIOD: u64 = 3;
 
 pub fn reserve_airline(origin: &str, destination: &str, airline: &str, airline_sem: &Arc<Semaphore>){
     logger::log(format!("Reservando aerolinea {}", airline));
@@ -81,7 +82,14 @@ pub fn logs_stats(log_stats_mutex: Arc<Mutex<bool>>, stats_mutex: Arc<Mutex<Stat
     let mut processing = true;
     while processing {
         let stats_block = stats_mutex.lock().unwrap();
-        println!("{:?}", stats_block.get_routes());
+        println!("---------------RUTAS MAS SOLICITADAS---------------");
+        let routes: HashMap<String, u32> = stats_block.get_routes();
+        let mut hash_vec: Vec<(&String, &u32)> = routes.iter().collect();
+        hash_vec.sort_by(|a, b| b.1.cmp(a.1));
+        for route in hash_vec{
+            println!("La ruta {:?} fue solicitada {:?} veces", route.0, route.1);
+        }
+        println!("---------------------------------------------------");
         drop(stats_block);
         thread::sleep(Duration::from_millis(STATS_LOG_PERIOD*1000));
         let log_stats_lock = log_stats_mutex.lock().unwrap();
