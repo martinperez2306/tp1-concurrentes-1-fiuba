@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use crate::reserve_controller::model::route::Route;
+use crate::model::route::Route;
 
 pub struct Stats {
     routes: HashMap<String, u32>,

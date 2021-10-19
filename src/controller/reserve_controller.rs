@@ -1,9 +1,7 @@
-mod model;
 extern crate std_semaphore;
 
-use crate::reserve_controller::model::route::Route;
-use crate::webservice_aerolineas;
-use crate::webservice_hoteles;
+use crate::webservice::webservice_aerolineas;
+use crate::webservice::webservice_hoteles;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, BufRead};
@@ -12,10 +10,11 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, SystemTime};
 use std_semaphore::Semaphore;
-use crate::reserve_controller::model::flight::Flight;
-use crate::reserve_controller::model::logger;
-use crate::reserve_controller::model::package::Package;
-use crate::reserve_controller::model::stats::Stats;
+use crate::model::flight::Flight;
+use crate::model::logger;
+use crate::model::package::Package;
+use crate::model::stats::Stats;
+use crate::model::route::Route;
 
 const NO_HOTEL: &str = "-";
 const DELAY_BETWEEN_RETRIES_SECONDS: u64 = 5;

@@ -1,7 +1,8 @@
-mod reserve_controller;
-mod webservice_aerolineas;
-mod webservice_hoteles;
+mod controller;
+mod model;
+mod webservice;
 use std::env;
+use crate::controller::reserve_controller;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
