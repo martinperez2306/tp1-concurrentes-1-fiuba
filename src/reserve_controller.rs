@@ -84,9 +84,10 @@ pub fn logs_stats(log_stats_mutex: Arc<Mutex<bool>>, stats_mutex: Arc<Mutex<Stat
         let stats_block = stats_mutex.lock().unwrap();
         println!("---------------RUTAS MAS SOLICITADAS---------------");
         let routes: HashMap<String, u32> = stats_block.get_routes();
-        let mut hash_vec: Vec<(&String, &u32)> = routes.iter().collect();
-        hash_vec.sort_by(|a, b| b.1.cmp(a.1));
-        for route in hash_vec{
+        let mut routes_sorted: Vec<(&String, &u32)> = routes.iter().collect();
+        routes_sorted.sort_by(|a, b| b.1.cmp(a.1));
+        routes_sorted.truncate(10);
+        for route in routes_sorted{
             println!("La ruta {:?} fue solicitada {:?} veces", route.0, route.1);
         }
         println!("---------------------------------------------------");
