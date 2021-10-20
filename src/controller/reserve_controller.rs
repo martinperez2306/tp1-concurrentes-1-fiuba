@@ -22,6 +22,92 @@ const WEBSERVICE_AIRLINE_LIMIT: isize = 10;
 const WEBSERVICE_HOTEL_LIMIT: isize = 5;
 const STATS_LOG_PERIOD: u64 = 3;
 
+/**
+ * Process all the reserves stored in a specific file.
+ * Recieves file system path
+ */
+pub fn process_reserves(filename: String) {
+    let processing_reserves_mutex_for_parse = Arc::new(Mutex::new(true));
+    let processing_reserves_mutex_for_log = processing_reserves_mutex_for_parse.clone();
+    let mut processing_steps = vec![];
+    let stats: Stats = Stats::new();
+    let stats_mutex = Arc::new(Mutex::new(stats));
+    let stats_mutex_for_parse = stats_mutex.clone();
+    let stats_mutex_for_log = stats_mutex.clone();
+    let parse_reserves_thread = thread::spawn(move || parse_reserves(processing_reserves_mutex_for_parse, &filename, stats_mutex_for_parse));
+    let log_stats_thread = thread::spawn(move || logs_stats(processing_reserves_mutex_for_log, stats_mutex_for_log));
+    processing_steps.push(parse_reserves_thread);
+    processing_steps.push(log_stats_thread);
+    for step in processing_steps {
+        let _ = step.join();
+    }
+    let stats_block = stats_mutex.lock().unwrap();
+    let avg_reserve_processing_time = stats_block.get_avg_reserve_processing_time();
+    println!("El tiempo medio de procesamiento de una reserva es {} segundos", avg_reserve_processing_time);
+    println!("Procesamiento de Reservas terminado");
+}
+
+pub fn logs_stats(processing_reserves_mutex: Arc<Mutex<bool>>, stats_mutex: Arc<Mutex<Stats>>){
+    let mut processing = true;
+    while processing {
+        let stats_block = stats_mutex.lock().unwrap();
+        println!("---------------RUTAS MAS SOLICITADAS---------------");
+        let routes: HashMap<String, u32> = stats_block.get_routes();
+        let mut routes_sorted: Vec<(&String, &u32)> = routes.iter().collect();
+        routes_sorted.sort_by(|a, b| b.1.cmp(a.1));
+        routes_sorted.truncate(10);
+        for route in routes_sorted{
+            println!("La ruta {:?} fue solicitada {:?} veces", route.0, route.1);
+        }
+        println!("---------------------------------------------------");
+        drop(stats_block);
+        thread::sleep(Duration::from_millis(STATS_LOG_PERIOD*1000));
+        let log_stats_lock = processing_reserves_mutex.lock().unwrap();
+        processing = *log_stats_lock;
+        drop(log_stats_lock);
+    }
+}
+
+/**
+ * Parse the reserves stored in a specific file.
+ * Recieves file system path
+ */
+pub fn parse_reserves(processing_reserves_mutex: Arc<Mutex<bool>>, filename: &str, stats_mutex: Arc<Mutex<Stats>>){
+    // Make a vector to hold the children which are spawned.
+    let mut children = vec![];
+    let airline_sem = Arc::new(Semaphore::new(WEBSERVICE_AIRLINE_LIMIT));
+    let hotel_sem = Arc::new(Semaphore::new(WEBSERVICE_HOTEL_LIMIT)); 
+    if let Ok(lines) = read_lines(filename) {
+        // Consumes the iterator, returns an (Optional) String
+        for reserve_line in lines.into_iter().flatten() {
+            let reserve_split: Vec<&str> = reserve_line.split(' ').collect();
+            let origin = reserve_split[0].to_string();
+            let destination = reserve_split[1].to_string();
+            let airline = reserve_split[2].to_string();
+            let hotel = reserve_split[3].to_string();
+            let airline_sem_clone = airline_sem.clone();
+            let route = Route::new(origin.clone(), destination.clone());
+            let stat_mutex_for_it = stats_mutex.clone();
+            let stat_mutex_for_fligth = stats_mutex.clone();
+            let stat_mutex_for_package = stats_mutex.clone();
+            if hotel == NO_HOTEL {
+                children.push(thread::spawn(move || process_flight(&Flight::new(origin, destination, airline), airline_sem_clone, stat_mutex_for_fligth)));
+            } else {
+                let hotel_sem_clone = hotel_sem.clone();
+                children.push(thread::spawn(move || process_package(&Package::new(origin, destination, airline, hotel), airline_sem_clone, hotel_sem_clone, stat_mutex_for_package)));
+            }
+            children.push(thread::spawn(move || increment_stats(stat_mutex_for_it, route)));
+        }
+        println!("Esperando a que termine el procesamiento de Reservas");
+        for child in children {
+            let _ = child.join();
+        }
+        let mut processing_reserves_lock = processing_reserves_mutex.lock().unwrap();
+        *processing_reserves_lock = false;
+        drop(processing_reserves_lock);
+    }
+}
+
 pub fn reserve_airline(origin: &str, destination: &str, airline: &str, airline_sem: &Arc<Semaphore>){
     logger::log(format!("Reservando aerolinea {}", airline));
     airline_sem.acquire();
@@ -77,83 +163,15 @@ pub fn process_package(package: &Package, airline_sem: Arc<Semaphore>, hotel_sem
     stats_block.add_reserve_processing_time(difference.as_secs());
 }
 
-pub fn logs_stats(log_stats_mutex: Arc<Mutex<bool>>, stats_mutex: Arc<Mutex<Stats>>){
-    let mut processing = true;
-    while processing {
-        let stats_block = stats_mutex.lock().unwrap();
-        println!("---------------RUTAS MAS SOLICITADAS---------------");
-        let routes: HashMap<String, u32> = stats_block.get_routes();
-        let mut routes_sorted: Vec<(&String, &u32)> = routes.iter().collect();
-        routes_sorted.sort_by(|a, b| b.1.cmp(a.1));
-        routes_sorted.truncate(10);
-        for route in routes_sorted{
-            println!("La ruta {:?} fue solicitada {:?} veces", route.0, route.1);
-        }
-        println!("---------------------------------------------------");
-        drop(stats_block);
-        thread::sleep(Duration::from_millis(STATS_LOG_PERIOD*1000));
-        let log_stats_lock = log_stats_mutex.lock().unwrap();
-        processing = *log_stats_lock;
-        drop(log_stats_lock);
-    }
-}
-
 pub fn increment_stats(stat_mutex: Arc<Mutex<Stats>>, route: Route){
     let mut stats_block = stat_mutex.lock().unwrap();
     stats_block.increment_route_counter(route);
 }
 
-pub fn parse_reserves(filename: &str){
-    let parsing_reserves = true;
-    // Make a vector to hold the children which are spawned.
-    let mut children = vec![];
-    let airline_sem = Arc::new(Semaphore::new(WEBSERVICE_AIRLINE_LIMIT));
-    let hotel_sem = Arc::new(Semaphore::new(WEBSERVICE_HOTEL_LIMIT));
-    let stats: Stats = Stats::new();
-    let stat_mutex = Arc::new(Mutex::new(stats));
-    let stat_mutex_clone = stat_mutex.clone();    
-    let log_stats_mutex = Arc::new(Mutex::new(parsing_reserves));
-    let log_stats_mutex_clone = log_stats_mutex.clone();
-    let stats_thread = thread::spawn(move || logs_stats(log_stats_mutex, stat_mutex));
-    if let Ok(lines) = read_lines(filename) {
-        // Consumes the iterator, returns an (Optional) String
-        for reserve_line in lines.into_iter().flatten() {
-            let reserve_split: Vec<&str> = reserve_line.split(' ').collect();
-            let origin = reserve_split[0].to_string();
-            let destination = reserve_split[1].to_string();
-            let airline = reserve_split[2].to_string();
-            let hotel = reserve_split[3].to_string();
-            let airline_sem_clone = airline_sem.clone();
-            let route = Route::new(origin.clone(), destination.clone());
-            let stat_mutex_clone_it = stat_mutex_clone.clone();
-            let stat_mutex_fligth_clone = stat_mutex_clone.clone();
-            let stat_mutex_package_clone = stat_mutex_clone.clone();
-            if hotel == NO_HOTEL {
-                children.push(thread::spawn(move || process_flight(&Flight::new(origin, destination, airline), airline_sem_clone, stat_mutex_fligth_clone)));
-            } else {
-                let hotel_sem_clone = hotel_sem.clone();
-                children.push(thread::spawn(move || process_package(&Package::new(origin, destination, airline, hotel), airline_sem_clone, hotel_sem_clone, stat_mutex_package_clone)));
-            }
-            children.push(thread::spawn(move || increment_stats(stat_mutex_clone_it, route)));
-        }
-        println!("Esperando a que termine el procesamiento de Reservas");
-        for child in children {
-            // Wait for the thread to finish. Returns a result.
-            let _ = child.join();
-        }
-        let mut log_stats_lock = log_stats_mutex_clone.lock().unwrap();
-        *log_stats_lock = false;
-        drop(log_stats_lock);
-        let _stats_thread_join = stats_thread.join();
-        let stats_block = stat_mutex_clone.lock().unwrap();
-        let avg_reserve_processing_time = stats_block.get_avg_reserve_processing_time();
-        println!("El tiempo medio de procesamiento de una reserva es {} segundos", avg_reserve_processing_time);
-        println!("Procesamiento de Reservas terminado");
-    }
-}
-
-// The output is wrapped in a Result to allow matching on errors
-// Returns an Iterator to the Reader of the lines of the file.
+/** 
+ * The output is wrapped in a Result to allow matching on errors
+ * Returns an Iterator to the Reader of the lines of the file.
+ */
 fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
 where P: AsRef<Path>, {
     let file = File::open(filename)?;

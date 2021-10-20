@@ -7,5 +7,5 @@ use crate::controller::reserve_controller;
 fn main() {
     let args: Vec<String> = env::args().collect();
     let filename = &args[1];
-    reserve_controller::parse_reserves(filename);
+    reserve_controller::process_reserves(filename.to_string());
 }
