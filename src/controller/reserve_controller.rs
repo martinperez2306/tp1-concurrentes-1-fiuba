@@ -15,10 +15,10 @@ use crate::model::logger;
 use crate::model::package::Package;
 use crate::model::stats::Stats;
 use crate::model::route::Route;
+use crate::model::airlines_semaphore::AirlinesSemaphore;
 
 const NO_HOTEL: &str = "-";
 const DELAY_BETWEEN_RETRIES_SECONDS: u64 = 5;
-const WEBSERVICE_AIRLINE_LIMIT: isize = 10;
 const WEBSERVICE_HOTEL_LIMIT: isize = 5;
 const STATS_LOG_PERIOD: u64 = 3;
 
@@ -75,7 +75,10 @@ pub fn logs_stats(processing_reserves_mutex: Arc<Mutex<bool>>, stats_mutex: Arc<
 pub fn parse_reserves(processing_reserves_mutex: Arc<Mutex<bool>>, filename: &str, stats_mutex: Arc<Mutex<Stats>>){
     // Make a vector to hold the children which are spawned.
     let mut children = vec![];
-    let airline_sem = Arc::new(Semaphore::new(WEBSERVICE_AIRLINE_LIMIT));
+    let mut airlines = AirlinesSemaphore::new();
+    airlines.insert_airline_semaphore("Aerolineas_Argentinas".to_string());
+    airlines.insert_airline_semaphore("LAN".to_string());
+    let airlines_semaphore = Arc::new(airlines);
     let hotel_sem = Arc::new(Semaphore::new(WEBSERVICE_HOTEL_LIMIT)); 
     if let Ok(lines) = read_lines(filename) {
         // Consumes the iterator, returns an (Optional) String
@@ -85,18 +88,18 @@ pub fn parse_reserves(processing_reserves_mutex: Arc<Mutex<bool>>, filename: &st
             let destination = reserve_split[1].to_string();
             let airline = reserve_split[2].to_string();
             let hotel = reserve_split[3].to_string();
-            let airline_sem_clone = airline_sem.clone();
+            let airline_semaphore_for_process = airlines_semaphore.clone();
             let route = Route::new(origin.clone(), destination.clone());
-            let stat_mutex_for_it = stats_mutex.clone();
+            let stat_mutex_for_stats = stats_mutex.clone();
             let stat_mutex_for_fligth = stats_mutex.clone();
             let stat_mutex_for_package = stats_mutex.clone();
             if hotel == NO_HOTEL {
-                children.push(thread::spawn(move || process_flight(&Flight::new(origin, destination, airline), airline_sem_clone, stat_mutex_for_fligth)));
+                children.push(thread::spawn(move || process_flight(&Flight::new(origin, destination, airline), airline_semaphore_for_process, stat_mutex_for_fligth)));
             } else {
                 let hotel_sem_clone = hotel_sem.clone();
-                children.push(thread::spawn(move || process_package(&Package::new(origin, destination, airline, hotel), airline_sem_clone, hotel_sem_clone, stat_mutex_for_package)));
+                children.push(thread::spawn(move || process_package(&Package::new(origin, destination, airline, hotel), airline_semaphore_for_process, hotel_sem_clone, stat_mutex_for_package)));
             }
-            children.push(thread::spawn(move || increment_stats(stat_mutex_for_it, route)));
+            children.push(thread::spawn(move || increment_stats(stat_mutex_for_stats, route)));
         }
         println!("Esperando a que termine el procesamiento de Reservas");
         for child in children {
@@ -108,33 +111,30 @@ pub fn parse_reserves(processing_reserves_mutex: Arc<Mutex<bool>>, filename: &st
     }
 }
 
-pub fn reserve_airline(origin: &str, destination: &str, airline: &str, airline_sem: &Arc<Semaphore>){
-    logger::log(format!("Reservando aerolinea {}", airline));
-    airline_sem.acquire();
-    let approved: bool = webservice_aerolineas::reservar(origin.to_string(), destination.to_string());
-    airline_sem.release();
-    if !approved {
-        logger::log(format!("La aerolinea no aprobó la reserva. Reintentando en {} segundos", DELAY_BETWEEN_RETRIES_SECONDS));
-        thread::sleep(Duration::from_millis(DELAY_BETWEEN_RETRIES_SECONDS*1000));
-        reserve_airline(origin, destination, airline, airline_sem);
-        return;
-    }
-    logger::log(format!("La aerolinea aprobó la reserva con origen: {} y destino: {}", origin, destination));
-
+/** 
+ * The output is wrapped in a Result to allow matching on errors
+ * Returns an Iterator to the Reader of the lines of the file.
+ */
+fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
+where P: AsRef<Path>, {
+    let file = File::open(filename)?;
+    Ok(io::BufReader::new(file).lines())
 }
 
-pub fn reserve_hotel(hotel: &str, hotel_sem: &Arc<Semaphore>) {
-    hotel_sem.access();
-    webservice_hoteles::reservar(hotel.to_string());
-    logger::log(format!("El servicio de hoteles aprobó la reserva en: {}", hotel));
+/**
+ * Increment route counter
+ */
+pub fn increment_stats(stat_mutex: Arc<Mutex<Stats>>, route: Route){
+    let mut stats_block = stat_mutex.lock().unwrap();
+    stats_block.increment_route_counter(route);
 }
 
-pub fn process_flight(flight: &Flight, airline_sem: Arc<Semaphore>, stat_mutex: Arc<Mutex<Stats>>){
+pub fn process_flight(flight: &Flight, airlines_semaphore: Arc<AirlinesSemaphore>, stat_mutex: Arc<Mutex<Stats>>){
     let initial_process_time = SystemTime::now();
     let origin = flight.get_origin();
     let destination = flight.get_destination();
     let airline = flight.get_airline();
-    let _ = thread::spawn(move || reserve_airline(&origin, &destination, &airline, &airline_sem)).join();
+    let _ = thread::spawn(move || reserve_airline(&origin, &destination, &airline, &airlines_semaphore)).join();
     let final_process_time = SystemTime::now();
     let difference = final_process_time.duration_since(initial_process_time)
     .expect("Clock may have gone backwards");
@@ -143,14 +143,14 @@ pub fn process_flight(flight: &Flight, airline_sem: Arc<Semaphore>, stat_mutex: 
     stats_block.add_reserve_processing_time(difference.as_secs());
 }
 
-pub fn process_package(package: &Package, airline_sem: Arc<Semaphore>, hotel_sem: Arc<Semaphore>, stat_mutex: Arc<Mutex<Stats>>){
+pub fn process_package(package: &Package, airlines_semaphore: Arc<AirlinesSemaphore>, hotel_sem: Arc<Semaphore>, stat_mutex: Arc<Mutex<Stats>>){
     let initial_process_time = SystemTime::now();
     let mut children = vec![];
     let origin = package.get_origin();
     let destination = package.get_destination();
     let airline = package.get_airline();
     let hotel = package.get_hotel();
-    children.push(thread::spawn(move || reserve_airline(&origin, &destination, &airline, &airline_sem)));
+    children.push(thread::spawn(move || reserve_airline(&origin, &destination, &airline, &airlines_semaphore)));
     children.push(thread::spawn(move || reserve_hotel(&hotel, &hotel_sem)));
     for child in children {
         let _ = child.join();
@@ -163,17 +163,27 @@ pub fn process_package(package: &Package, airline_sem: Arc<Semaphore>, hotel_sem
     stats_block.add_reserve_processing_time(difference.as_secs());
 }
 
-pub fn increment_stats(stat_mutex: Arc<Mutex<Stats>>, route: Route){
-    let mut stats_block = stat_mutex.lock().unwrap();
-    stats_block.increment_route_counter(route);
+pub fn reserve_airline(origin: &str, destination: &str, airline: &str, airlines_semaphore: &Arc<AirlinesSemaphore>){
+    logger::log(format!("Reservando aerolinea {}", airline));
+    match airlines_semaphore.get_airline_semaphore(airline.to_string()) {
+        Some(airline_sem) => {
+            airline_sem.acquire();
+            let approved: bool = webservice_aerolineas::reservar(origin.to_string(), destination.to_string());
+            airline_sem.release();
+            if !approved {
+                logger::log(format!("La aerolinea no aprobó la reserva. Reintentando en {} segundos", DELAY_BETWEEN_RETRIES_SECONDS));
+                thread::sleep(Duration::from_millis(DELAY_BETWEEN_RETRIES_SECONDS*1000));
+                reserve_airline(origin, destination, airline, airlines_semaphore);
+                return;
+            }
+            logger::log(format!("La aerolinea aprobó la reserva con origen: {} y destino: {}", origin, destination));
+        },
+        _ => logger::log(format!("No se pudo procesar la reserva con aerolinea: {} ", airline)),
+    };
 }
 
-/** 
- * The output is wrapped in a Result to allow matching on errors
- * Returns an Iterator to the Reader of the lines of the file.
- */
-fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
-where P: AsRef<Path>, {
-    let file = File::open(filename)?;
-    Ok(io::BufReader::new(file).lines())
+pub fn reserve_hotel(hotel: &str, hotel_sem: &Arc<Semaphore>) {
+    hotel_sem.access();
+    webservice_hoteles::reservar(hotel.to_string());
+    logger::log(format!("El servicio de hoteles aprobó la reserva en: {}", hotel));
 }
