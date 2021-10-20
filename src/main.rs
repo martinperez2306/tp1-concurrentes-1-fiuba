@@ -1,8 +1,8 @@
 mod controller;
 mod model;
 mod webservice;
-use std::env;
 use crate::controller::reserve_controller;
+use std::env;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
