@@ -1,5 +1,6 @@
 use actix::prelude::*;
 use crate::model::reserve::Reserve;
+use crate::model::reserve_actor::ReserveActor;
 
 /// Define message
 #[derive(Message)]
@@ -15,7 +16,17 @@ impl ReserveString {
 }
 
 // Define actor
-pub struct ReceiverActor;
+pub struct ReceiverActor {
+    reserve_actor: Addr<ReserveActor>
+}
+
+impl ReceiverActor {
+    pub fn new(reserve_actor: Addr<ReserveActor>) -> ReceiverActor {
+        ReceiverActor {
+            reserve_actor,
+        }
+    }
+}
 
 // Provide Actor implementation for our actor
 impl Actor for ReceiverActor {
@@ -37,10 +48,10 @@ impl Handler<ReserveString> for ReceiverActor {
     fn handle(&mut self, reserve_string: ReserveString, _ctx: &mut Context<Self>) -> Self::Result {
         println!("Reserve received");
         let reserve = build_reserve(reserve_string.line);
+        let _result = self.reserve_actor.send(reserve);
         Ok(true)
     }
 
-    
 }
 
 fn build_reserve(reserve_line: String) -> Reserve {

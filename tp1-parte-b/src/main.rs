@@ -5,6 +5,7 @@ use model::receiver_actor::ReserveString;
 use crate::model::ping_actor::PingActor;
 use crate::model::ping_actor::Ping;
 use crate::model::receiver_actor::ReceiverActor;
+use crate::model::reserve_actor::ReserveActor;
 
 
 #[get("/ping")]
@@ -24,7 +25,7 @@ async fn ping() -> impl Responder {
 
 #[post("/reserves")]
 async fn reserve(req_body: String) -> impl Responder {
-    let addr = ReceiverActor.start();
+    let addr = ReceiverActor::new(ReserveActor.start()).start();
     let result = addr.send(ReserveString::new(req_body.clone())).await;
     match result {
         Ok(res) => println!("Got result: {}", res.unwrap()),
