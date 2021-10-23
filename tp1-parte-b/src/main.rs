@@ -1,12 +1,25 @@
+mod model;
 use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
+use actix::prelude::*;
+use crate::model::receiver_actor::ReceiverActor;
+use crate::model::receiver_actor::Ping;
 
-#[get("/")]
+#[get("/ping")]
 async fn hello() -> impl Responder {
-    HttpResponse::Ok().body("Hello world!")
+    HttpResponse::Ok().body("Pong!")
 }
 
-#[post("/echo")]
+#[post("/reserves")]
 async fn echo(req_body: String) -> impl Responder {
+    let addr = ReceiverActor.start();
+    // Send Ping message.
+    // send() message returns Future object, that resolves to message result
+    let result = addr.send(Ping).await;
+
+    match result {
+        Ok(res) => println!("Got result: {}", res.unwrap()),
+        Err(err) => println!("Got error: {}", err),
+    } 
     HttpResponse::Ok().body(req_body)
 }
 
