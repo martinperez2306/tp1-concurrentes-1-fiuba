@@ -25,11 +25,13 @@ impl Actor for ReserveActor {
 
 /// Define handler for `Reserve` message
 impl Handler<Reserve> for ReserveActor {
-    type Result = Result<bool, std::io::Error>;
+    type Result = ResponseFuture<Result<bool, std::io::Error>>;
 
     fn handle(&mut self, msg: Reserve, _ctx: &mut Context<Self>) -> Self::Result {
-        process_reserve(msg);
-        Ok(true)
+        Box::pin(async move {
+            let _result = process_reserve(msg).await;
+            Ok(true)
+        })
     }
 }
 
