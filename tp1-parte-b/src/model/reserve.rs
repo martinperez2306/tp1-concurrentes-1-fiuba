@@ -31,7 +31,4 @@ impl Reserve {
     pub fn get_hotel(&self) -> String {
         self.hotel.clone()
     }
-    pub fn clone(&self) -> Reserve {
-        Reserve::new(self.origin.clone(), self.destination.clone(), self.airline.clone(), self.hotel.clone())
-    }
 }

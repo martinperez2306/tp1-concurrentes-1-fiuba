@@ -6,6 +6,7 @@ use crate::model::airline_arbiters::AirlinesArbiters;
 use crate::model::route::Route;
 use actix::{Actor, Handler, SyncArbiter};
 
+use super::flight::{Flight};
 use super::package::Package;
 
 const NO_HOTEL: &str = "-";
@@ -38,19 +39,21 @@ impl Handler<Reserve> for ReserveActor {
     }
 }
 
-async fn process_flight(airlines: AirlinesArbiters, airline: String, origin: String, destination: String) {
+async fn process_flight(airlines: AirlinesArbiters, flight: Flight) {
+    let airline = flight.get_airline().to_string();
     match airlines.get_airline_arbiter(airline.to_string()) {
         Some(airline_arbiter) => {
             // Search for airline
-            airline_arbiter.send(ReserveFlight(origin, destination)).await.unwrap();
+            airline_arbiter.send(ReserveFlight(flight.get_route().get_origin(), flight.get_route().get_destination())).await.unwrap();
         }
         _ => println!("No se encontró la aerolinea: {}", airline),
     }
 }
 
 async fn process_package(airlines: AirlinesArbiters, arbitrer_hotel: Addr<HotelWsActor>, package: Package) {
+    let flight = Flight::new(Route::new(package.get_route().get_origin(), package.get_route().get_destination()),package.get_airline());
     // Search for airline
-    let process_airline = process_flight(airlines, package.get_airline(), package.get_route().get_origin(), package.get_route().get_destination());
+    let process_airline = process_flight(airlines, flight);
     // Hotel ws call
     let process_hotel = arbitrer_hotel.send(ReserveHotel(package.get_hotel()));
     process_airline.await;
@@ -68,7 +71,7 @@ async fn process_reserve(reserve: Reserve) {
     airlines.insert_airline_arbiter("LAN".to_string());
     if hotel == NO_HOTEL {
         println!("Procesar Vuelo con Origen {}, Destino {} y Aerolinea {}", origin, destination, airline);
-        process_flight(airlines, airline, origin, destination).await;
+        process_flight(airlines, Flight::new(Route::new(origin, destination), airline)).await;
     } else {
         println!("Procesar Paquete con Origen {}, Destino {}, Aerolinea {} y Hotel {}", origin, destination, airline, hotel);
         process_package(airlines, arbitrer_hotel, Package::new(Route::new(origin, destination), airline, hotel)).await;
