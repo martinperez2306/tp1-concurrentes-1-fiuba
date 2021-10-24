@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use crate::model::airline_ws_actor::AirlineWsActor;
-use actix::{Actor, Handler, Message, SyncArbiter, Addr, System, SyncContext};
+use actix::{SyncArbiter, Addr};
 
 const WEBSERVICE_AIRLINE_LIMIT: usize = 10;
 

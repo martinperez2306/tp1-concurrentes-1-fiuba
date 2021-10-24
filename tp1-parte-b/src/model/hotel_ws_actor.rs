@@ -1,11 +1,10 @@
 extern crate actix;
 
-use std::{thread, io};
+use std::{thread};
 use std::time::{Duration};
 use rand::Rng;
 
 use actix::{Actor, Handler, Message, SyncContext};
-use std::io::Read;
 
 
 #[derive(Message)]

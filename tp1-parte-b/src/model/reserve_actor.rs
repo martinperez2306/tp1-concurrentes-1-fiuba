@@ -3,7 +3,7 @@ use crate::model::reserve::Reserve;
 use crate::model::airline_ws_actor::{ReserveFlight};
 use crate::model::hotel_ws_actor::{HotelWsActor, ReserveHotel};
 use crate::model::airline_arbiters::AirlinesArbiters;
-use actix::{Actor, Handler, Message, SyncArbiter, System, SyncContext};
+use actix::{Actor, Handler, SyncArbiter};
 
 const NO_HOTEL: &str = "-";
 
@@ -60,8 +60,10 @@ async fn process_reserve(reserve: Reserve) {
     } else {
         println!("Procesar Paquete con Origen {}, Destino {}, Aerolinea {} y Hotel {}", origin, destination, airline, hotel);
         // Search for airline
-        process_flight(airlines, airline, origin, destination).await;
+        let process_airline = process_flight(airlines, airline, origin, destination);
         // Hotel ws call
-        arbitrer_hotel.send(ReserveHotel(hotel)).await.unwrap();
+        let process_hotel = arbitrer_hotel.send(ReserveHotel(hotel));
+        process_airline.await;
+        process_hotel.await.unwrap();
     }
 }
