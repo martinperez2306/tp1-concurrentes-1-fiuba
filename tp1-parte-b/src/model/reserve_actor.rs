@@ -1,7 +1,6 @@
 use actix::prelude::*;
 use crate::model::reserve::Reserve;
-
-use super::{process_finished::ProcessFinished, reserve::ReserveMessage};
+use crate::model::reserve::ReserveMessage;
 
 const NO_HOTEL: &str = "-";
 
@@ -27,9 +26,7 @@ impl Handler<ReserveMessage> for ReserveActor {
 
     fn handle(&mut self, msg: ReserveMessage, _ctx: &mut Context<Self>) -> Self::Result {
         let reserve = msg.get_reserve();
-        let caller = msg.get_caller();
         process_reserve(reserve);
-        let result = caller.send(ProcessFinished {result: "TERMINE".to_string()});
         Ok(true)
     }
 }

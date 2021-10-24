@@ -48,11 +48,10 @@ impl Handler<ReserveString> for ReceiverActor {
 
     fn handle(&mut self, reserve_string: ReserveString, _ctx: &mut Context<Self>) -> Self::Result {
         println!("Reserve received");
-        let addr = _ctx.address();
         let reserve_actor = self.reserve_actor.clone();
         Box::pin(async move {
             let reserve = build_reserve(reserve_string.line);
-            let reserve_message = ReserveMessage::new(reserve, addr);
+            let reserve_message = ReserveMessage::new(reserve);
             let _result = reserve_actor.send(reserve_message).await;
             Ok(true)
         })

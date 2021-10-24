@@ -6,7 +6,6 @@ use crate::model::receiver_actor::ReceiverActor;
 #[rtype(result = "Result<bool, std::io::Error>")]
 pub struct ReserveMessage {
     reserve: Reserve,
-    caller_addr: Addr<ReceiverActor>
 }
 pub struct Reserve {
     origin: String,
@@ -16,17 +15,13 @@ pub struct Reserve {
 }
 
 impl ReserveMessage{
-    pub fn new(reserve: Reserve, caller_addr: Addr<ReceiverActor>) -> ReserveMessage {
+    pub fn new(reserve: Reserve) -> ReserveMessage {
         ReserveMessage {
             reserve,
-            caller_addr,
         }
     }
     pub fn get_reserve(&self) -> Reserve {
         self.reserve.clone()
-    }
-    pub fn get_caller(&self) -> Addr<ReceiverActor> {
-        self.caller_addr.clone()
     }
 }
 
