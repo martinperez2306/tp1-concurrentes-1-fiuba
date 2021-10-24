@@ -1,4 +1,5 @@
 use actix::prelude::*;
+use crate::model::logger;
 use crate::model::reserve::Reserve;
 use crate::model::airline_ws_actor::{ReserveFlight};
 use crate::model::hotel_ws_actor::{HotelWsActor, ReserveHotel};
@@ -70,10 +71,10 @@ async fn process_reserve(reserve: Reserve) {
     airlines.insert_airline_arbiter("Aerolineas_Argentinas".to_string());
     airlines.insert_airline_arbiter("LAN".to_string());
     if hotel == NO_HOTEL {
-        println!("Procesar Vuelo con Origen {}, Destino {} y Aerolinea {}", origin, destination, airline);
+        logger::log(format!("Procesando Vuelo con Origen {}, Destino {} y Aerolinea {}", origin, destination, airline));
         process_flight(airlines, Flight::new(Route::new(origin, destination), airline)).await;
     } else {
-        println!("Procesar Paquete con Origen {}, Destino {}, Aerolinea {} y Hotel {}", origin, destination, airline, hotel);
+        logger::log(format!("Procesando Paquete con Origen {}, Destino {}, Aerolinea {} y Hotel {}", origin, destination, airline, hotel));
         process_package(airlines, arbitrer_hotel, Package::new(Route::new(origin, destination), airline, hotel)).await;
     }
 }

@@ -6,6 +6,8 @@ use rand::Rng;
 
 use actix::{Actor, Handler, Message, SyncContext};
 
+use crate::model::logger;
+
 
 #[derive(Message)]
 #[rtype(result = "bool")]
@@ -26,6 +28,7 @@ impl Handler<ReserveHotel> for HotelWsActor {
         let mut rng = rand::thread_rng();
         let miliseconds_to_sleep = rng.gen_range(0..10);
         thread::sleep(Duration::from_millis(miliseconds_to_sleep * 1000));
+        logger::log(format!("Reserva de Hotel con destino {} aprobada!", reserve.0));
         true
         /*
         Box::pin(sleep(Duration::from_secs(msg.0))

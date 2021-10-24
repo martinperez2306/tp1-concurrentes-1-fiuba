@@ -6,6 +6,8 @@ use rand::Rng;
 
 use actix::{Actor, Handler, Message, SyncContext};
 
+use crate::model::logger;
+
 
 #[derive(Message)]
 #[rtype(result = "bool")]
@@ -30,9 +32,10 @@ impl Handler<ReserveFlight> for AirlineWsActor {
             thread::sleep(Duration::from_millis(miliseconds_to_sleep * 1000));
             let random_response = rng.gen_range(0..10);
             if random_response <= 5 {
+                logger::log(format!("Reserva de Aerolinea con origen {} y destino {} aprobada!", reserve.0, reserve.1));
                 break
             } else {
-                println!("Rechazado!");
+                logger::log(format!("Reserva de Aerolinea con origen {} y destino {} rechazada!", reserve.0, reserve.1));
             }
         }
         true

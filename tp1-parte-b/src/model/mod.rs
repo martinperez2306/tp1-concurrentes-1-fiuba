@@ -1,4 +1,5 @@
 pub mod flight;
+pub mod logger;
 pub mod package;
 pub mod ping_actor;
 pub mod receiver_actor;

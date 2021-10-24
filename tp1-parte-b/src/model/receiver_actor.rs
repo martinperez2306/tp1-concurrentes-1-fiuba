@@ -47,7 +47,7 @@ impl Handler<ReserveString> for ReceiverActor {
     type Result = ResponseFuture<Result<bool, std::io::Error>>;
 
     fn handle(&mut self, reserve_string: ReserveString, _ctx: &mut Context<Self>) -> Self::Result {
-        println!("Reserve received");
+        println!("Reserva Recibida");
         let reserve_actor = self.reserve_actor.clone();
         Box::pin(async move {
             let reserve = build_reserve(reserve_string.line);
