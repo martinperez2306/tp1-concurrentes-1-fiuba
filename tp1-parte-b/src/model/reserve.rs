@@ -1,28 +1,13 @@
 use actix::prelude::*;
-use crate::model::receiver_actor::ReceiverActor;
 
 /// Define message
 #[derive(Message)]
 #[rtype(result = "Result<bool, std::io::Error>")]
-pub struct ReserveMessage {
-    reserve: Reserve,
-}
 pub struct Reserve {
     origin: String,
     destination: String,
     airline: String,
     hotel: String,
-}
-
-impl ReserveMessage{
-    pub fn new(reserve: Reserve) -> ReserveMessage {
-        ReserveMessage {
-            reserve,
-        }
-    }
-    pub fn get_reserve(&self) -> Reserve {
-        self.reserve.clone()
-    }
 }
 
 impl Reserve {

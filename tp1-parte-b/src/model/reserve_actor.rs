@@ -1,6 +1,5 @@
 use actix::prelude::*;
 use crate::model::reserve::Reserve;
-use crate::model::reserve::ReserveMessage;
 
 const NO_HOTEL: &str = "-";
 
@@ -21,12 +20,11 @@ impl Actor for ReserveActor {
 }
 
 /// Define handler for `Reserve` message
-impl Handler<ReserveMessage> for ReserveActor {
+impl Handler<Reserve> for ReserveActor {
     type Result = Result<bool, std::io::Error>;
 
-    fn handle(&mut self, msg: ReserveMessage, _ctx: &mut Context<Self>) -> Self::Result {
-        let reserve = msg.get_reserve();
-        process_reserve(reserve);
+    fn handle(&mut self, msg: Reserve, _ctx: &mut Context<Self>) -> Self::Result {
+        process_reserve(msg);
         Ok(true)
     }
 }

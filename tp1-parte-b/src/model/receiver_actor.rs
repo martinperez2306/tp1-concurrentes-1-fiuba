@@ -1,7 +1,7 @@
 use actix::prelude::*;
-use crate::model::reserve::{Reserve, ReserveMessage};
+use crate::model::reserve::{Reserve};
 use crate::model::reserve_actor::ReserveActor;
-use crate::model::process_finished::ProcessFinished;
+
 
 /// Define message
 #[derive(Message)]
@@ -51,22 +51,10 @@ impl Handler<ReserveString> for ReceiverActor {
         let reserve_actor = self.reserve_actor.clone();
         Box::pin(async move {
             let reserve = build_reserve(reserve_string.line);
-            let reserve_message = ReserveMessage::new(reserve);
-            let _result = reserve_actor.send(reserve_message).await;
+            let _result = reserve_actor.send(reserve).await;
             Ok(true)
         })
     }
-}
-
-/// Define handler for `ProcessFinished` message
-impl Handler<ProcessFinished> for ReceiverActor {
-    type Result = Result<bool, std::io::Error>;
-
-    fn handle(&mut self, reserve_string: ProcessFinished, _ctx: &mut Context<Self>) -> Self::Result {
-        println!("Result: {}", reserve_string.result);
-        Ok(true)
-    }
-
 }
 
 fn build_reserve(reserve_line: String) -> Reserve {
