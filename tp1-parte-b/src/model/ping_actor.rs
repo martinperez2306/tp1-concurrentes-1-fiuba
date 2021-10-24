@@ -12,12 +12,12 @@ pub struct PingActor;
 impl Actor for PingActor {
     type Context = Context<Self>;
 
-    fn started(&mut self, ctx: &mut Context<Self>) {
-       println!("Actor is alive");
+    fn started(&mut self, _ctx: &mut Context<Self>) {
+       println!("Ping Actor is alive");
     }
 
-    fn stopped(&mut self, ctx: &mut Context<Self>) {
-       println!("Actor is stopped");
+    fn stopped(&mut self, _ctx: &mut Context<Self>) {
+       println!("Ping Actor is stopped");
     }
 }
 
@@ -25,7 +25,7 @@ impl Actor for PingActor {
 impl Handler<Ping> for PingActor {
     type Result = Result<bool, std::io::Error>;
 
-    fn handle(&mut self, msg: Ping, ctx: &mut Context<Self>) -> Self::Result {
+    fn handle(&mut self, _msg: Ping, _ctx: &mut Context<Self>) -> Self::Result {
         println!("Ping received");
         Ok(true)
     }
