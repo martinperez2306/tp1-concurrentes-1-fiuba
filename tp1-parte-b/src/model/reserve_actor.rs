@@ -1,5 +1,9 @@
 use actix::prelude::*;
 use crate::model::reserve::Reserve;
+use crate::model::airline_ws_actor::{ReserveFlight};
+use crate::model::hotel_ws_actor::{HotelWsActor, ReserveHotel};
+use crate::model::airline_arbiters::AirlinesArbiters;
+use actix::{Actor, Handler, Message, SyncArbiter, System, SyncContext};
 
 const NO_HOTEL: &str = "-";
 
@@ -29,14 +33,33 @@ impl Handler<Reserve> for ReserveActor {
     }
 }
 
-fn process_reserve(reserve: Reserve) {
+async fn process_flight(airlines: AirlinesArbiters, airline: String, origin: String, destination: String) {
+    match airlines.get_airline_arbiter(airline.to_string()) {
+        Some(airline_arbiter) => {
+            airline_arbiter.send(ReserveFlight(origin, destination)).await.unwrap();
+        }
+        _ => println!("No se encontró la aerolinea: {}", airline),
+    }
+}
+
+async fn process_reserve(reserve: Reserve) {
     let origin = reserve.get_origin();
     let destination = reserve.get_destination();
     let airline = reserve.get_airline();
     let hotel = reserve.get_hotel();
+    let arbitrer_hotel = SyncArbiter::start(1, || HotelWsActor { id: "KEP".to_string() });
+    let mut airlines = AirlinesArbiters::new();
+    airlines.insert_airline_arbiter("Aerolineas_Argentinas".to_string());
+    airlines.insert_airline_arbiter("LAN".to_string());
     if hotel == NO_HOTEL {
         println!("Procesar Vuelo con Origen {}, Destino {} y Aerolinea {}", origin, destination, airline);
+        // Search for airline
+        process_flight(airlines, airline, origin, destination).await;
     } else {
         println!("Procesar Paquete con Origen {}, Destino {}, Aerolinea {} y Hotel {}", origin, destination, airline, hotel);
+        // Search for airline
+        process_flight(airlines, airline, origin, destination).await;
+        // Hotel ws call
+        arbitrer_hotel.send(ReserveHotel(hotel)).await.unwrap();
     }
 }

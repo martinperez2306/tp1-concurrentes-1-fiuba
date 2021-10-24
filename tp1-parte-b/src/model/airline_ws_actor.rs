@@ -1,0 +1,41 @@
+extern crate actix;
+
+use std::{thread, io};
+use std::time::{Duration};
+use rand::Rng;
+
+use actix::{Actor, Handler, Message, SyncArbiter, System, SyncContext};
+use std::io::Read;
+
+
+#[derive(Message)]
+#[rtype(result = "bool")]
+pub struct ReserveFlight(pub String, pub String);
+
+pub struct AirlineWsActor {
+    pub id: String
+}
+
+impl Actor for AirlineWsActor {
+    type Context = SyncContext<Self>;
+}
+
+impl Handler<ReserveFlight> for AirlineWsActor {
+    type Result = bool;
+
+    fn handle(&mut self, reserve: ReserveFlight, _ctx: &mut <AirlineWsActor as Actor>::Context) -> Self::Result  {
+        while true {
+            println!("Airline: {} \n origen: {} \n destino: {}", self.id, reserve.0, reserve.1);
+            let mut rng = rand::thread_rng();
+            let miliseconds_to_sleep = rng.gen_range(0..10);
+            thread::sleep(Duration::from_millis(miliseconds_to_sleep * 1000));
+            let random_response = rng.gen_range(0..10);
+            if random_response <= 5 {
+                break
+            } else {
+                println!("Rechazado!");
+            }
+        }
+        true
+    }
+}
