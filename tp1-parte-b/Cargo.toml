@@ -1,10 +1,12 @@
 [package]
-name = "tp1"
-version = "0.1.0"
+name = "tp1-parte-b"
+version = "1.0.0"
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 rand = "0.8.4"
-std-semaphore = "0.1"
+actix-web = "3"
+actix = "0.10.0"
+actix-rt = "1.1"

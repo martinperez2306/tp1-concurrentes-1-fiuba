@@ -56,6 +56,7 @@ pub fn process_reserves(filename: String) {
         avg_reserve_processing_time
     );
     logger::log(format!("Procesamiento de Reservas terminado"));
+
 }
 
 pub fn logs_stats(processing_reserves_mutex: Arc<Mutex<bool>>, stats_mutex: Arc<Mutex<Stats>>) {
