@@ -10,3 +10,4 @@ pub mod airline_ws_actor;
 pub mod hotel_ws_actor;
 pub mod airline_arbiters;
 pub mod stats;
+pub mod stats_loop;

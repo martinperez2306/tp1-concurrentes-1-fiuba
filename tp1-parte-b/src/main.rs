@@ -1,11 +1,10 @@
 mod model;
-use std::thread;
-use std::time::Duration;
 
 use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
 use actix::prelude::*;
 use model::receiver_actor::ReserveString;
 use model::stats::Stats;
+use model::stats_loop::StatsLoop;
 use crate::model::ping_actor::PingActor;
 use crate::model::ping_actor::Ping;
 use crate::model::receiver_actor::ReceiverActor;
@@ -13,7 +12,7 @@ use crate::model::reserve_actor::ReserveActor;
 use crate::model::logger;
 use crate::model::airline_arbiters::AirlinesArbiters;
 use crate::model::hotel_ws_actor::HotelWsActor;
-use crate::model::stats::GetStats;
+use crate::model::stats_loop::Loop;
 
 
 #[get("/ping")]
@@ -75,10 +74,8 @@ async fn main() -> std::io::Result<()> {
         arbiter_airlines,
         arbiter_stats,
     });
-    thread::spawn(move || loop {
-        let _result = arbiter_stats_clone.send(GetStats);
-        thread::sleep(Duration::from_secs(5));
-    });
+    let stats_loop = StatsLoop{arbiter_stats:arbiter_stats_clone}.start();
+    let _ = stats_loop.try_send(Loop);
     HttpServer::new( move || {
         App::new()
             .service(ping)
