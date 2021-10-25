@@ -5,7 +5,7 @@ use crate::model::airline_ws_actor::{ReserveFlight};
 use crate::model::hotel_ws_actor::{HotelWsActor, ReserveHotel};
 use crate::model::airline_arbiters::AirlinesArbiters;
 use crate::model::route::Route;
-use actix::{Actor, Handler, SyncArbiter};
+use actix::{Actor, Handler};
 
 use super::flight::{Flight};
 use super::package::Package;

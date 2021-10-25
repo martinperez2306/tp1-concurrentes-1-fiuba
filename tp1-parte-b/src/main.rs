@@ -1,7 +1,11 @@
 mod model;
+use std::thread;
+use std::time::Duration;
+
 use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
 use actix::prelude::*;
 use model::receiver_actor::ReserveString;
+use model::stats::Stats;
 use crate::model::ping_actor::PingActor;
 use crate::model::ping_actor::Ping;
 use crate::model::receiver_actor::ReceiverActor;
@@ -9,6 +13,7 @@ use crate::model::reserve_actor::ReserveActor;
 use crate::model::logger;
 use crate::model::airline_arbiters::AirlinesArbiters;
 use crate::model::hotel_ws_actor::HotelWsActor;
+use crate::model::stats::GetStats;
 
 
 #[get("/ping")]
@@ -44,14 +49,16 @@ async fn version() -> impl Responder {
 
 pub struct Arbiters {
     pub arbiter_hotel: Addr<HotelWsActor>,
-    pub arbiter_airlines: AirlinesArbiters
+    pub arbiter_airlines: AirlinesArbiters,
+    pub arbiter_stats: Addr<Stats>
 }
 
 impl Arbiters {
     pub fn clone(&self) -> Arbiters {
         Arbiters {
             arbiter_hotel: self.arbiter_hotel.clone(),
-            arbiter_airlines: self.arbiter_airlines.clone()
+            arbiter_airlines: self.arbiter_airlines.clone(),
+            arbiter_stats: self.arbiter_stats.clone()
         }
     }
 }
@@ -60,9 +67,16 @@ impl Arbiters {
 async fn main() -> std::io::Result<()> {
     let arbiter_hotel = SyncArbiter::start(1, || HotelWsActor { id: "KEP".to_string() });
     let arbiter_airlines = AirlinesArbiters::new();
+    let arbiter_stats = SyncArbiter::start(1, || Stats::new());
+    let arbiter_stats_clone = arbiter_stats.clone();
     let arbiters = web::Data::new(Arbiters {
         arbiter_hotel,
-        arbiter_airlines
+        arbiter_airlines,
+        arbiter_stats,
+    });
+    thread::spawn(move || loop {
+        let _result = arbiter_stats_clone.send(GetStats);
+        thread::sleep(Duration::from_secs(5));
     });
     HttpServer::new( move || {
         App::new()
