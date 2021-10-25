@@ -1,18 +1,22 @@
 use actix::prelude::*;
 use crate::model::reserve::{Reserve};
-use crate::model::reserve_actor::ReserveActor;
+use crate::model::reserve_actor::{ReserveActor, ReserveMsg};
+use crate::model::airline_arbiters::AirlinesArbiters;
+use crate::model::hotel_ws_actor::HotelWsActor;
 
 
 /// Define message
 #[derive(Message)]
 #[rtype(result = "Result<bool, std::io::Error>")]
 pub struct ReserveString{
-    line: String
+    line: String,
+        arbiter_hotel: Addr<HotelWsActor>,
+        arbiter_airlines: AirlinesArbiters
 }
 
 impl ReserveString {
-    pub fn new(line: String) -> ReserveString {
-        ReserveString { line }
+    pub fn new(line: String, arbiter_hotel: Addr<HotelWsActor>, arbiter_airlines: AirlinesArbiters) -> ReserveString {
+        ReserveString { line, arbiter_hotel, arbiter_airlines}
     }
 }
 
@@ -47,11 +51,13 @@ impl Handler<ReserveString> for ReceiverActor {
     type Result = ResponseFuture<Result<bool, std::io::Error>>;
 
     fn handle(&mut self, reserve_string: ReserveString, _ctx: &mut Context<Self>) -> Self::Result {
-        println!("Reserve received");
+        println!("Reserva Recibida");
         let reserve_actor = self.reserve_actor.clone();
         Box::pin(async move {
             let reserve = build_reserve(reserve_string.line);
-            let _result = reserve_actor.send(reserve).await;
+            let _result = reserve_actor.send(ReserveMsg::new(reserve,
+                                                                  reserve_string.arbiter_hotel,
+                                                                  reserve_string.arbiter_airlines)).await;
             Ok(true)
         })
     }
