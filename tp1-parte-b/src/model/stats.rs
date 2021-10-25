@@ -1,5 +1,5 @@
 use crate::model::route::Route;
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 use actix::prelude::*;
 
 #[derive(Message)]
@@ -9,7 +9,8 @@ pub struct GetStats;
 #[derive(Message)]
 #[rtype(result = "Result<(), std::io::Error>")]
 pub struct UpdateStats {
-    pub route: Route
+    pub route: Route,
+    pub process_time: Duration
 }
 
 pub struct Stats {
@@ -47,7 +48,9 @@ impl Stats {
             count += 1;
             avg += time;
         }
-        avg = avg / count;
+        if count != 0{
+            avg = avg / count;
+        }
         return avg;
     }
 }
@@ -79,6 +82,13 @@ impl Handler<GetStats> for Stats {
             println!("La ruta {:?} fue solicitada {:?} veces", route.0, route.1);
         }
         println!("----------------------------------------------------------");
+        println!("-----------------------TIEMPO MEDIO-----------------------");
+        let avg_reserve_processing_time = self.get_avg_reserve_processing_time();
+        println!(
+            "El tiempo medio de procesamiento de una reserva es {} segundos",
+            avg_reserve_processing_time
+        );
+        println!("----------------------------------------------------------");
         Ok(())
     }
 }
@@ -89,6 +99,7 @@ impl Handler<UpdateStats> for Stats {
 
     fn handle(&mut self, msg: UpdateStats, _ctx: &mut <Stats as Actor>::Context) -> Self::Result {
         self.increment_route_counter(msg.route);
+        self.add_reserve_processing_time(msg.process_time.as_secs());
         Ok(())
     }
 }

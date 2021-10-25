@@ -1,3 +1,5 @@
+use std::time::SystemTime;
+
 use actix::prelude::*;
 use crate::model::logger;
 use crate::model::reserve::Reserve;
@@ -87,6 +89,7 @@ async fn process_package(airlines: AirlinesArbiters, arbitrer_hotel: Addr<HotelW
 }
 
 async fn process_reserve(reserve: Reserve, arbiter_hotel: Addr<HotelWsActor>, arbiter_airlines: AirlinesArbiters, arbiter_stats: Addr<Stats>) {
+    let initial_process_time = SystemTime::now();
     let origin = reserve.get_origin();
     let destination = reserve.get_destination();
     let airline = reserve.get_airline();
@@ -98,5 +101,9 @@ async fn process_reserve(reserve: Reserve, arbiter_hotel: Addr<HotelWsActor>, ar
         logger::log(format!("Procesando Paquete con Origen {}, Destino {}, Aerolinea {} y Hotel {}", origin, destination, airline, hotel));
         process_package(arbiter_airlines, arbiter_hotel, Package::new(Route::new(origin.clone(), destination.clone()), airline, hotel)).await;
     }
-    let _ = arbiter_stats.send(UpdateStats{route: Route::new(origin, destination) }).await;
+    let final_process_time = SystemTime::now();
+    let difference = final_process_time
+        .duration_since(initial_process_time)
+        .expect("Ocurrio un error inesperado");
+    let _ = arbiter_stats.send(UpdateStats{route: Route::new(origin, destination), process_time: difference }).await;
 }
