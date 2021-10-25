@@ -7,6 +7,8 @@ use crate::model::ping_actor::Ping;
 use crate::model::receiver_actor::ReceiverActor;
 use crate::model::reserve_actor::ReserveActor;
 use crate::model::logger;
+use crate::model::airline_arbiters::AirlinesArbiters;
+use crate::model::hotel_ws_actor::HotelWsActor;
 
 
 #[get("/ping")]
@@ -25,10 +27,10 @@ async fn ping() -> impl Responder {
 }
 
 #[post("/reserves")]
-async fn reserve(req_body: String) -> impl Responder {
+async fn reserve(req_body: String, data: web::Data<Arbiters>) -> impl Responder {
     logger::log(format!("Recibiendo solicitud par procesar la reserva {}", req_body.clone()));
     let addr = ReceiverActor::new(ReserveActor.start()).start();
-    let result = addr.send(ReserveString::new(req_body.clone())).await;
+    let result = addr.send(ReserveString::new(req_body.clone(), data.arbiter_hotel.clone(), data.arbiter_airlines.clone())).await;
     match result {
         Ok(_res) => logger::log(format!("Reserva {} procesada con exito", req_body.clone())),
         Err(err) => logger::log(format!("Ocurrio un error al procesar la reserva {}. {}", req_body.clone(), err)),
@@ -40,12 +42,33 @@ async fn version() -> impl Responder {
     HttpResponse::Ok().body("Version 1.0.0")
 }
 
+pub struct Arbiters {
+    pub arbiter_hotel: Addr<HotelWsActor>,
+    pub arbiter_airlines: AirlinesArbiters
+}
+
+impl Arbiters {
+    pub fn clone(&self) -> Arbiters {
+        Arbiters {
+            arbiter_hotel: self.arbiter_hotel.clone(),
+            arbiter_airlines: self.arbiter_airlines.clone()
+        }
+    }
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    HttpServer::new(|| {
+    let arbiter_hotel = SyncArbiter::start(1, || HotelWsActor { id: "KEP".to_string() });
+    let arbiter_airlines = AirlinesArbiters::new();
+    let arbiters = web::Data::new(Arbiters {
+        arbiter_hotel,
+        arbiter_airlines
+    });
+    HttpServer::new( move || {
         App::new()
             .service(ping)
             .service(reserve)
+            .app_data(arbiters.clone())
             .route("/version", web::get().to(version))
     })
     .bind("127.0.0.1:8080")?
