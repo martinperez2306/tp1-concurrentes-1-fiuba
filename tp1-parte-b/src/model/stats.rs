@@ -6,6 +6,12 @@ use actix::prelude::*;
 #[rtype(result = "Result<(), std::io::Error>")]
 pub struct GetStats;
 
+#[derive(Message)]
+#[rtype(result = "Result<(), std::io::Error>")]
+pub struct UpdateStats {
+    pub route: Route
+}
+
 pub struct Stats {
     routes: HashMap<String, u32>,
     reserve_processing_times: Vec<u64>,
@@ -73,6 +79,16 @@ impl Handler<GetStats> for Stats {
             println!("La ruta {:?} fue solicitada {:?} veces", route.0, route.1);
         }
         println!("----------------------------------------------------------");
+        Ok(())
+    }
+}
+
+/// Define handler for `Reserve String` message
+impl Handler<UpdateStats> for Stats {
+    type Result = Result<(), std::io::Error>;
+
+    fn handle(&mut self, msg: UpdateStats, _ctx: &mut <Stats as Actor>::Context) -> Self::Result {
+        self.increment_route_counter(msg.route);
         Ok(())
     }
 }

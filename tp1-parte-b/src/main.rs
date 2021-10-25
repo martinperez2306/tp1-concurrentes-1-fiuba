@@ -35,7 +35,8 @@ async fn ping() -> impl Responder {
 async fn reserve(req_body: String, data: web::Data<Arbiters>) -> impl Responder {
     logger::log(format!("Recibiendo solicitud par procesar la reserva {}", req_body.clone()));
     let addr = ReceiverActor::new(ReserveActor.start()).start();
-    let result = addr.send(ReserveString::new(req_body.clone(), data.arbiter_hotel.clone(), data.arbiter_airlines.clone())).await;
+    let result = addr.send(ReserveString::new(req_body.clone(), data.arbiter_hotel.clone(), data.arbiter_airlines.clone(), data.arbiter_stats.clone()))
+                                                .await;
     match result {
         Ok(_res) => logger::log(format!("Reserva {} procesada con exito", req_body.clone())),
         Err(err) => logger::log(format!("Ocurrio un error al procesar la reserva {}. {}", req_body.clone(), err)),
