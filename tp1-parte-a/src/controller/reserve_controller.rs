@@ -12,6 +12,9 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
+use std::sync::mpsc;
+use std::sync::mpsc::Receiver;
+use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, SystemTime};
@@ -28,8 +31,8 @@ const STATS_LOG_PERIOD: u64 = 3;
  */
 pub fn process_reserves(filename: String) {
     logger::log(format!("Procesamiento de Reservas iniciado"));
-    let processing_reserves_mutex_for_parse = Arc::new(Mutex::new(true));
-    let processing_reserves_mutex_for_log = processing_reserves_mutex_for_parse.clone();
+    let (processing_reserves_tx, processing_reserves_rx) = mpsc::channel();
+    processing_reserves_tx.send(true).unwrap();
     let mut processing_steps = vec![];
     let stats: Stats = Stats::new();
     let stats_mutex = Arc::new(Mutex::new(stats));
@@ -37,13 +40,13 @@ pub fn process_reserves(filename: String) {
     let stats_mutex_for_log = stats_mutex.clone();
     let parse_reserves_thread = thread::spawn(move || {
         parse_reserves(
-            processing_reserves_mutex_for_parse,
+            processing_reserves_tx,
             &filename,
             stats_mutex_for_parse,
         )
     });
     let log_stats_thread =
-        thread::spawn(move || logs_stats(processing_reserves_mutex_for_log, stats_mutex_for_log));
+        thread::spawn(move || logs_stats(processing_reserves_rx, stats_mutex_for_log));
     processing_steps.push(parse_reserves_thread);
     processing_steps.push(log_stats_thread);
     for step in processing_steps {
@@ -59,7 +62,7 @@ pub fn process_reserves(filename: String) {
 
 }
 
-pub fn logs_stats(processing_reserves_mutex: Arc<Mutex<bool>>, stats_mutex: Arc<Mutex<Stats>>) {
+pub fn logs_stats(processing_reserves_rx: Receiver<bool>, stats_mutex: Arc<Mutex<Stats>>) {
     let mut processing = true;
     while processing {
         let stats_block = stats_mutex.lock().unwrap();
@@ -74,9 +77,9 @@ pub fn logs_stats(processing_reserves_mutex: Arc<Mutex<bool>>, stats_mutex: Arc<
         println!("----------------------------------------------------------");
         drop(stats_block);
         thread::sleep(Duration::from_millis(STATS_LOG_PERIOD * 1000));
-        let log_stats_lock = processing_reserves_mutex.lock().unwrap();
-        processing = *log_stats_lock;
-        drop(log_stats_lock);
+        if let Ok(stats_signal) = processing_reserves_rx.try_recv(){
+            processing = stats_signal;
+        }
     }
 }
 
@@ -85,7 +88,7 @@ pub fn logs_stats(processing_reserves_mutex: Arc<Mutex<bool>>, stats_mutex: Arc<
  * Recieves file system path
  */
 pub fn parse_reserves(
-    processing_reserves_mutex: Arc<Mutex<bool>>,
+    processing_reserves_tx: Sender<bool>,
     filename: &str,
     stats_mutex: Arc<Mutex<Stats>>,
 ) {
@@ -134,9 +137,7 @@ pub fn parse_reserves(
         for child in reserves {
             let _ = child.join();
         }
-        let mut processing_reserves_lock = processing_reserves_mutex.lock().unwrap();
-        *processing_reserves_lock = false;
-        drop(processing_reserves_lock);
+        processing_reserves_tx.send(false).unwrap();
     }
 }
 
