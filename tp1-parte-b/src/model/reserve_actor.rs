@@ -15,7 +15,6 @@ use super::stats::{Stats, UpdateStats};
 
 const NO_HOTEL: &str = "-";
 
-/// Define message
 #[derive(Message)]
 #[rtype(result = "Result<bool, std::io::Error>")]
 pub struct ReserveMsg{
@@ -39,7 +38,7 @@ impl ReserveMsg {
     }
 }
 
-// Define actor
+/// This Actor is responsible for processing the information present in the received Reserve accordingly
 pub struct ReserveActor;
 
 // Provide Actor implementation for our actor

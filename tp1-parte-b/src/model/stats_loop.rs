@@ -9,6 +9,7 @@ use super::stats::{GetStats, Stats};
 #[rtype(result = "()")]
 pub struct Loop;
 
+/// This actor is responsible of printing the statistics of routes and processing time
 pub struct StatsLoop{
     pub arbiter_stats: Addr<Stats>
 }

@@ -7,7 +7,6 @@ use crate::model::hotel_ws_actor::HotelWsActor;
 use super::stats::Stats;
 
 
-/// Define message
 #[derive(Message)]
 #[rtype(result = "Result<bool, std::io::Error>")]
 pub struct ReserveString{
@@ -23,7 +22,7 @@ impl ReserveString {
     }
 }
 
-// Define actor
+/// This actor is responsible for parsing a received line and converting it into a Reserve.
 pub struct ReceiverActor {
     reserve_actor: Addr<ReserveActor>
 }

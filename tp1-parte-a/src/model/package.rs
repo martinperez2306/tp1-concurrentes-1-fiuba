@@ -1,3 +1,4 @@
+/// It represents a Package reserve and it has the needed information for it
 pub struct Package {
     origin: String,
     destination: String,

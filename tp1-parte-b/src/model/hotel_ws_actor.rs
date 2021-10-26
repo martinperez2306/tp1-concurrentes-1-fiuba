@@ -12,6 +12,8 @@ use crate::model::logger;
 #[derive(Message)]
 #[rtype(result = "bool")]
 pub struct ReserveHotel(pub String);
+
+/// This actor encapsulates and simulates the call to a hotel web service
 pub struct HotelWsActor {
     pub id: String
 }
@@ -38,12 +40,5 @@ impl Handler<ReserveHotel> for HotelWsActor {
         thread::sleep(Duration::from_millis(miliseconds_to_sleep * 1000));
         logger::log(format!("Reserva de Hotel con destino {} aprobada!", reserve.0));
         true
-        /*
-        Box::pin(sleep(Duration::from_secs(msg.0))
-            .into_actor(self)
-            .map(move |_result, me, _ctx| {
-                println!("[{}] desperté de {}", me.id, msg.0);
-            }))
-        */
     }
 }

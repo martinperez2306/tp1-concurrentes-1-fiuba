@@ -1,3 +1,4 @@
+/// It represents a Flight reserve and it has the needed information for it
 pub struct Flight {
     origin: String,
     destination: String,

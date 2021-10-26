@@ -1,4 +1,5 @@
 use crate::model::route::Route;
+/// It represents a Flight.
 pub struct Flight {
     route: Route,
     airline: String,

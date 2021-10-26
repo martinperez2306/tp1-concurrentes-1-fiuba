@@ -1,4 +1,5 @@
 use crate::model::route::Route;
+/// It represents a Package.
 pub struct Package {
     route: Route,
     airline: String,

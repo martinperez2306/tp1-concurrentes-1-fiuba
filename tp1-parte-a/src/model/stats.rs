@@ -1,6 +1,8 @@
 use crate::model::route::Route;
 use std::collections::HashMap;
 
+/// This struct keeps track of statics about the most required routes and the average processing time
+/// of the reserves.
 pub struct Stats {
     routes: HashMap<String, u32>,
     reserve_processing_times: Vec<u64>,

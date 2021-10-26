@@ -13,6 +13,7 @@ use crate::model::logger;
 #[rtype(result = "bool")]
 pub struct ReserveFlight(pub String, pub String);
 
+/// This actor encapsulates and simulates the call to an airline web service
 pub struct AirlineWsActor {
     pub id: String
 }

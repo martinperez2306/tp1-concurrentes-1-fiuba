@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use std_semaphore::Semaphore;
+/// How many seconds to wait until trying again after a airline web service reservation fails
 const WEBSERVICE_AIRLINE_LIMIT: isize = 10;
 
+/// This struct maps a given airline with its corresponding Semaphore.
 pub struct AirlinesSemaphore {
     semaphores_by_airline: HashMap<String, Arc<Semaphore>>,
 }

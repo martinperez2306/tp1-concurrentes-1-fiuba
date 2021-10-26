@@ -20,9 +20,13 @@ use std::thread;
 use std::time::{Duration, SystemTime};
 use std_semaphore::Semaphore;
 
+/// Character printed in file when no hotel is reserved
 const NO_HOTEL: &str = "-";
+/// How many seconds to wait until trying again after a hotel web service reservation fails
 const DELAY_BETWEEN_RETRIES_SECONDS: u64 = 5;
+/// How many concurrent calls does the hotel web service supports
 const WEBSERVICE_HOTEL_LIMIT: isize = 5;
+/// How many seconds until stats are printed again
 const STATS_LOG_PERIOD: u64 = 3;
 
 /**
@@ -100,7 +104,7 @@ pub fn logs_stats(processing_reserves_rx: Receiver<bool>, stats_mutex: Arc<Mutex
 
 /**
  * Parse the reserves stored in a specific file.
- * Recieves file system path
+ * Recieves: file system path, a channel and the stats mutex
  */
 pub fn parse_reserves(
     processing_reserves_tx: Sender<bool>,
@@ -159,8 +163,7 @@ pub fn parse_reserves(
 }
 
 /**
- * The output is wrapped in a Result to allow matching on errors
- * Returns an Iterator to the Reader of the lines of the file.
+ * Returns an Iterator to the Reader of the lines of the file. Receives a filename.
  */
 fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
 where
@@ -181,6 +184,10 @@ pub fn increment_stats(stat_mutex: Arc<Mutex<Stats>>, route: Route) {
     }
 }
 
+
+/**
+ * Receives a Flight and creates the needed threads to process it.
+ */
 pub fn process_flight(
     flight: &Flight,
     airlines_semaphore: Arc<AirlinesSemaphore>,
@@ -212,7 +219,9 @@ pub fn process_flight(
         Err(e) => {println!("Algo salió mal con el stats_lock. Error: {}", e);}
     }
 }
-
+/**
+ * Receives a Package and creates the needed threads to process it.
+ */
 pub fn process_package(
     package: &Package,
     airlines_semaphore: Arc<AirlinesSemaphore>,
@@ -251,6 +260,9 @@ pub fn process_package(
     }
 }
 
+/**
+ * Receives an origin, destination and airline and calls the corresponding airline web service.
+ */
 pub fn reserve_airline(
     origin: &str,
     destination: &str,
@@ -285,6 +297,9 @@ pub fn reserve_airline(
     };
 }
 
+/**
+ * Receives the hotel name and calls the corresponding hotel web service.
+ */
 pub fn reserve_hotel(hotel: &str, hotel_sem: &Arc<Semaphore>) {
     hotel_sem.access();
     logger::log(format!("Solcitando reserva al hotel {}", hotel));

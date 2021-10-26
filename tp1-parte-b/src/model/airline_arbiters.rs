@@ -4,6 +4,7 @@ use actix::{SyncArbiter, Addr};
 
 const WEBSERVICE_AIRLINE_LIMIT: usize = 10;
 
+/// It coordinates the AirlineWsActors so that the program never surpass the airline web service request limit
 pub struct AirlinesArbiters {
     arbiters_by_airline: HashMap<String, Addr<AirlineWsActor>>,
 }

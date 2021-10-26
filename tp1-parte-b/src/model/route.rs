@@ -1,3 +1,4 @@
+/// It represents a Route between two locations.
 pub struct Route {
     origin: String,
     destination: String,

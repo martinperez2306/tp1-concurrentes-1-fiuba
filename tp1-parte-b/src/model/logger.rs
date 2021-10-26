@@ -1,6 +1,8 @@
 use std::fs::OpenOptions;
 use std::io::Write;
 
+/** It logs the message through console and to a file located in ./resources/reserves.log.
+* The file needs to be previously created. */
 pub fn log(message: String) {
     let result = OpenOptions::new()
         .write(true)
