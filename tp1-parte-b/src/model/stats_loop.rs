@@ -2,7 +2,6 @@ use std::{thread::sleep, time::Duration};
 
 use actix::prelude::*;
 
-
 use super::stats::{GetStats, Stats};
 
 #[derive(Message)]
@@ -10,8 +9,8 @@ use super::stats::{GetStats, Stats};
 pub struct Loop;
 
 /// This actor is responsible of printing the statistics of routes and processing time
-pub struct StatsLoop{
-    pub arbiter_stats: Addr<Stats>
+pub struct StatsLoop {
+    pub arbiter_stats: Addr<Stats>,
 }
 
 // Provide Actor implementation for our actor
@@ -19,11 +18,11 @@ impl Actor for StatsLoop {
     type Context = Context<Self>;
 
     fn started(&mut self, _ctx: &mut Context<Self>) {
-       println!("Stats Loops Actor is alive");
+        println!("Stats Loops Actor is alive");
     }
 
     fn stopped(&mut self, _ctx: &mut Context<Self>) {
-       println!("Stats Loops Actor is stopped");
+        println!("Stats Loops Actor is stopped");
     }
 }
 

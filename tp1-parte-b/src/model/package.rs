@@ -11,7 +11,7 @@ impl Package {
         Package {
             route,
             airline,
-            hotel
+            hotel,
         }
     }
     pub fn get_route(&self) -> Route {

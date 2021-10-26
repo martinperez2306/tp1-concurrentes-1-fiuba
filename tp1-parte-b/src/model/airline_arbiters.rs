@@ -1,6 +1,6 @@
-use std::collections::HashMap;
 use crate::model::airline_ws_actor::AirlineWsActor;
-use actix::{SyncArbiter, Addr};
+use actix::{Addr, SyncArbiter};
+use std::collections::HashMap;
 
 const WEBSERVICE_AIRLINE_LIMIT: usize = 10;
 
@@ -12,10 +12,18 @@ pub struct AirlinesArbiters {
 impl AirlinesArbiters {
     pub fn new() -> AirlinesArbiters {
         let mut arbiters_by_airline = HashMap::new();
-        arbiters_by_airline
-            .insert("Aerolineas_Argentinas".to_string(), SyncArbiter::start(WEBSERVICE_AIRLINE_LIMIT, move || AirlineWsActor { id: "1".to_string() }));
-        arbiters_by_airline
-            .insert("LAN".to_string(), SyncArbiter::start(WEBSERVICE_AIRLINE_LIMIT, move || AirlineWsActor { id: "1".to_string() }));
+        arbiters_by_airline.insert(
+            "Aerolineas_Argentinas".to_string(),
+            SyncArbiter::start(WEBSERVICE_AIRLINE_LIMIT, move || AirlineWsActor {
+                id: "1".to_string(),
+            }),
+        );
+        arbiters_by_airline.insert(
+            "LAN".to_string(),
+            SyncArbiter::start(WEBSERVICE_AIRLINE_LIMIT, move || AirlineWsActor {
+                id: "1".to_string(),
+            }),
+        );
         AirlinesArbiters {
             arbiters_by_airline,
         }
@@ -24,7 +32,7 @@ impl AirlinesArbiters {
         self.arbiters_by_airline.get(&airline)
     }
 
-    pub fn clone(&self) -> AirlinesArbiters{
+    pub fn clone(&self) -> AirlinesArbiters {
         AirlinesArbiters {
             arbiters_by_airline: self.arbiters_by_airline.clone(),
         }

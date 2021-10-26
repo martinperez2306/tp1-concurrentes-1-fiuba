@@ -7,10 +7,7 @@ pub struct Flight {
 
 impl Flight {
     pub fn new(route: Route, airline: String) -> Flight {
-        Flight {
-            route,
-            airline,
-        }
+        Flight { route, airline }
     }
     pub fn get_route(&self) -> Route {
         self.route.clone()

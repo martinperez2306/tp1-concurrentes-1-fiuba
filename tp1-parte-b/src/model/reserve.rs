@@ -15,7 +15,7 @@ impl Reserve {
             origin,
             destination,
             airline,
-            hotel
+            hotel,
         }
     }
     pub fn get_origin(&self) -> String {

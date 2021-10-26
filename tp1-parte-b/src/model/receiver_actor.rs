@@ -1,37 +1,44 @@
-use actix::prelude::*;
-use crate::model::reserve::{Reserve};
-use crate::model::reserve_actor::{ReserveActor, ReserveMsg};
 use crate::model::airline_arbiters::AirlinesArbiters;
 use crate::model::hotel_ws_actor::HotelWsActor;
+use crate::model::reserve::Reserve;
+use crate::model::reserve_actor::{ReserveActor, ReserveMsg};
+use actix::prelude::*;
 
 use super::stats::Stats;
 
-
 #[derive(Message)]
 #[rtype(result = "Result<bool, std::io::Error>")]
-pub struct ReserveString{
+pub struct ReserveString {
     line: String,
-        arbiter_hotel: Addr<HotelWsActor>,
-        arbiter_airlines: AirlinesArbiters,
-        arbiter_stats: Addr<Stats>
+    arbiter_hotel: Addr<HotelWsActor>,
+    arbiter_airlines: AirlinesArbiters,
+    arbiter_stats: Addr<Stats>,
 }
 
 impl ReserveString {
-    pub fn new(line: String, arbiter_hotel: Addr<HotelWsActor>, arbiter_airlines: AirlinesArbiters, arbiter_stats: Addr<Stats> ) -> ReserveString {
-        ReserveString { line, arbiter_hotel, arbiter_airlines, arbiter_stats }
+    pub fn new(
+        line: String,
+        arbiter_hotel: Addr<HotelWsActor>,
+        arbiter_airlines: AirlinesArbiters,
+        arbiter_stats: Addr<Stats>,
+    ) -> ReserveString {
+        ReserveString {
+            line,
+            arbiter_hotel,
+            arbiter_airlines,
+            arbiter_stats,
+        }
     }
 }
 
 /// This actor is responsible for parsing a received line and converting it into a Reserve.
 pub struct ReceiverActor {
-    reserve_actor: Addr<ReserveActor>
+    reserve_actor: Addr<ReserveActor>,
 }
 
 impl ReceiverActor {
     pub fn new(reserve_actor: Addr<ReserveActor>) -> ReceiverActor {
-        ReceiverActor {
-            reserve_actor,
-        }
+        ReceiverActor { reserve_actor }
     }
 }
 
@@ -40,11 +47,11 @@ impl Actor for ReceiverActor {
     type Context = Context<Self>;
 
     fn started(&mut self, _ctx: &mut Context<Self>) {
-       println!("ReceiverActor is alive");
+        println!("ReceiverActor is alive");
     }
 
     fn stopped(&mut self, _ctx: &mut Context<Self>) {
-       println!("ReceiverActor is stopped");
+        println!("ReceiverActor is stopped");
     }
 }
 
@@ -57,10 +64,14 @@ impl Handler<ReserveString> for ReceiverActor {
         let reserve_actor = self.reserve_actor.clone();
         Box::pin(async move {
             let reserve = build_reserve(reserve_string.line);
-            let _result = reserve_actor.send(ReserveMsg::new(reserve,
-                                                                  reserve_string.arbiter_hotel,
-                                                                  reserve_string.arbiter_airlines,
-                                                                  reserve_string.arbiter_stats)).await;
+            let _result = reserve_actor
+                .send(ReserveMsg::new(
+                    reserve,
+                    reserve_string.arbiter_hotel,
+                    reserve_string.arbiter_airlines,
+                    reserve_string.arbiter_stats,
+                ))
+                .await;
             Ok(true)
         })
     }

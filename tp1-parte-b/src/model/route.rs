@@ -11,8 +11,12 @@ impl Route {
             destination,
         }
     }
-    pub fn get_origin(&self) -> String { self.origin.clone() }
-    pub fn get_destination(&self)  -> String { self.destination.clone() }
+    pub fn get_origin(&self) -> String {
+        self.origin.clone()
+    }
+    pub fn get_destination(&self) -> String {
+        self.destination.clone()
+    }
     pub fn get_id(&self) -> String {
         self.origin.clone() + "_" + &self.destination.clone()
     }

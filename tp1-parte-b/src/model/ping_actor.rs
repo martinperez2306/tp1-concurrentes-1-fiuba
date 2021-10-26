@@ -12,11 +12,11 @@ impl Actor for PingActor {
     type Context = Context<Self>;
 
     fn started(&mut self, _ctx: &mut Context<Self>) {
-       println!("Ping Actor is alive");
+        println!("Ping Actor is alive");
     }
 
     fn stopped(&mut self, _ctx: &mut Context<Self>) {
-       println!("Ping Actor is stopped");
+        println!("Ping Actor is stopped");
     }
 }
 

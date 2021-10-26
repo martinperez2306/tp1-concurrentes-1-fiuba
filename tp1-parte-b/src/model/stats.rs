@@ -1,6 +1,6 @@
 use crate::model::route::Route;
-use std::{collections::HashMap, time::Duration};
 use actix::prelude::*;
+use std::{collections::HashMap, time::Duration};
 
 #[derive(Message)]
 #[rtype(result = "Result<(), std::io::Error>")]
@@ -10,7 +10,7 @@ pub struct GetStats;
 #[rtype(result = "Result<(), std::io::Error>")]
 pub struct UpdateStats {
     pub route: Route,
-    pub process_time: Duration
+    pub process_time: Duration,
 }
 
 /// This struct keeps track of statics about the most required routes and the average processing time
@@ -50,7 +50,7 @@ impl Stats {
             count += 1;
             avg += time;
         }
-        if count != 0{
+        if count != 0 {
             avg /= count;
         }
         avg
@@ -62,11 +62,11 @@ impl Actor for Stats {
     type Context = SyncContext<Self>;
 
     fn started(&mut self, _ctx: &mut SyncContext<Self>) {
-       println!("Stats Actor is alive");
+        println!("Stats Actor is alive");
     }
 
     fn stopped(&mut self, _ctx: &mut SyncContext<Self>) {
-       println!("Stats Actor is stopped");
+        println!("Stats Actor is stopped");
     }
 }
 
