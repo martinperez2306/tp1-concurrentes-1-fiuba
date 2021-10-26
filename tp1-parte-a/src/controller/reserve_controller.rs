@@ -62,6 +62,9 @@ pub fn process_reserves(filename: String) {
 
 }
 
+/**
+ * Registers the statistics of the 10 most requested routes periodically until the system finishes processing the total reserves
+ */
 pub fn logs_stats(processing_reserves_rx: Receiver<bool>, stats_mutex: Arc<Mutex<Stats>>) {
     let mut processing = true;
     while processing {
@@ -154,7 +157,7 @@ where
 }
 
 /**
- * Increment route counter
+ * Increment route counter for Stats
  */
 pub fn increment_stats(stat_mutex: Arc<Mutex<Stats>>, route: Route) {
     let mut stats_block = stat_mutex.lock().unwrap();
