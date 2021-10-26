@@ -36,7 +36,7 @@ impl Stats {
             count += 1;
             avg += time;
         }
-        avg = avg / count;
-        return avg;
+        avg /= count;
+        avg
     }
 }

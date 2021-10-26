@@ -11,7 +11,6 @@ impl Route {
         }
     }
     pub fn get_id(&self) -> String {
-        let route_id = self.origin.clone() + "_" + &self.destination.clone();
-        return route_id;
+        self.origin.clone() + "_" + &self.destination.clone()
     }
 }

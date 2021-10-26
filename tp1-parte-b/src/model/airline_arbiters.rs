@@ -28,8 +28,9 @@ impl AirlinesArbiters {
             arbiters_by_airline: self.arbiters_by_airline.clone(),
         }
     }
-    // pub fn insert_airline_arbiter(&mut self, airline: String) {
-    //     self.arbiters_by_airline
-    //         .insert(airline, SyncArbiter::start(WEBSERVICE_AIRLINE_LIMIT, move || AirlineWsActor { id: "1".to_string() }));
-    // }
+}
+impl Default for AirlinesArbiters {
+    fn default() -> Self {
+        Self::new()
+    }
 }

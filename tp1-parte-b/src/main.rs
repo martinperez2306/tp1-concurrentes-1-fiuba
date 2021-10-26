@@ -13,6 +13,7 @@ use crate::model::logger;
 use crate::model::airline_arbiters::AirlinesArbiters;
 use crate::model::hotel_ws_actor::HotelWsActor;
 use crate::model::stats_loop::Loop;
+use std::clone::Clone;
 
 
 #[get("/ping")]
@@ -57,8 +58,8 @@ pub struct Arbiters {
     pub arbiter_stats: Addr<Stats>
 }
 
-impl Arbiters {
-    pub fn clone(&self) -> Arbiters {
+impl Clone for Arbiters {
+    fn clone(&self) -> Self {
         Arbiters {
             arbiter_hotel: self.arbiter_hotel.clone(),
             arbiter_airlines: self.arbiter_airlines.clone(),
@@ -71,7 +72,7 @@ impl Arbiters {
 async fn main() -> std::io::Result<()> {
     let arbiter_hotel = SyncArbiter::start(1, || HotelWsActor { id: "KEP".to_string() });
     let arbiter_airlines = AirlinesArbiters::new();
-    let arbiter_stats = SyncArbiter::start(1, || Stats::new());
+    let arbiter_stats = SyncArbiter::start(1, Stats::new);
     let arbiter_stats_clone = arbiter_stats.clone();
     let arbiters = web::Data::new(Arbiters {
         arbiter_hotel,

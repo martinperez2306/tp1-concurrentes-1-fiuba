@@ -49,9 +49,9 @@ impl Stats {
             avg += time;
         }
         if count != 0{
-            avg = avg / count;
+            avg /= count;
         }
-        return avg;
+        avg
     }
 }
 
@@ -101,5 +101,10 @@ impl Handler<UpdateStats> for Stats {
         self.increment_route_counter(msg.route);
         self.add_reserve_processing_time(msg.process_time.as_secs());
         Ok(())
+    }
+}
+impl Default for Stats {
+    fn default() -> Self {
+        Self::new()
     }
 }

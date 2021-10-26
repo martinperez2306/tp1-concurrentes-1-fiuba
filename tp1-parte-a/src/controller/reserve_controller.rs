@@ -30,7 +30,7 @@ const STATS_LOG_PERIOD: u64 = 3;
  * Recieves file system path
  */
 pub fn process_reserves(filename: String) {
-    logger::log(format!("Procesamiento de Reservas iniciado"));
+    logger::log("Procesamiento de Reservas iniciado".to_string());
     let (processing_reserves_tx, processing_reserves_rx) = mpsc::channel();
     if let Err(error) = processing_reserves_tx.send(true){
         println!("Ocurrio un error enviando a traves del channel: {}", error);
@@ -58,7 +58,7 @@ pub fn process_reserves(filename: String) {
                 "El tiempo medio de procesamiento de una reserva es {} segundos",
                 avg_reserve_processing_time
             );
-            logger::log(format!("Procesamiento de Reservas terminado"));
+            logger::log("Procesamiento de Reservas terminado".to_string());
         }
         Err(e) => {
             println!("Algo salió mal con el stats_lock. Error: {}", e);
