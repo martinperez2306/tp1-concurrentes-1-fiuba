@@ -23,7 +23,11 @@ async fn ping() -> impl Responder {
     let result = addr.send(Ping).await;
 
     match result {
-        Ok(res) => println!("Got result: {}", res.unwrap()),
+        Ok(res) => {
+            if let Ok(response) = res {
+                println!("Got result: {}", response);
+            }
+        }
         Err(err) => println!("Got error: {}", err),
     } 
 
