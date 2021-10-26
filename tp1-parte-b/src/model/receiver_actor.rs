@@ -4,6 +4,8 @@ use crate::model::reserve_actor::{ReserveActor, ReserveMsg};
 use crate::model::airline_arbiters::AirlinesArbiters;
 use crate::model::hotel_ws_actor::HotelWsActor;
 
+use super::stats::Stats;
+
 
 /// Define message
 #[derive(Message)]
@@ -11,12 +13,13 @@ use crate::model::hotel_ws_actor::HotelWsActor;
 pub struct ReserveString{
     line: String,
         arbiter_hotel: Addr<HotelWsActor>,
-        arbiter_airlines: AirlinesArbiters
+        arbiter_airlines: AirlinesArbiters,
+        arbiter_stats: Addr<Stats>
 }
 
 impl ReserveString {
-    pub fn new(line: String, arbiter_hotel: Addr<HotelWsActor>, arbiter_airlines: AirlinesArbiters) -> ReserveString {
-        ReserveString { line, arbiter_hotel, arbiter_airlines}
+    pub fn new(line: String, arbiter_hotel: Addr<HotelWsActor>, arbiter_airlines: AirlinesArbiters, arbiter_stats: Addr<Stats> ) -> ReserveString {
+        ReserveString { line, arbiter_hotel, arbiter_airlines, arbiter_stats }
     }
 }
 
@@ -57,7 +60,8 @@ impl Handler<ReserveString> for ReceiverActor {
             let reserve = build_reserve(reserve_string.line);
             let _result = reserve_actor.send(ReserveMsg::new(reserve,
                                                                   reserve_string.arbiter_hotel,
-                                                                  reserve_string.arbiter_airlines)).await;
+                                                                  reserve_string.arbiter_airlines,
+                                                                  reserve_string.arbiter_stats)).await;
             Ok(true)
         })
     }

@@ -1,3 +1,5 @@
+use std::time::SystemTime;
+
 use actix::prelude::*;
 use crate::model::logger;
 use crate::model::reserve::Reserve;
@@ -5,10 +7,11 @@ use crate::model::airline_ws_actor::{ReserveFlight};
 use crate::model::hotel_ws_actor::{HotelWsActor, ReserveHotel};
 use crate::model::airline_arbiters::AirlinesArbiters;
 use crate::model::route::Route;
-use actix::{Actor, Handler, SyncArbiter};
+use actix::{Actor, Handler};
 
 use super::flight::{Flight};
 use super::package::Package;
+use super::stats::{Stats, UpdateStats};
 
 const NO_HOTEL: &str = "-";
 
@@ -18,17 +21,20 @@ const NO_HOTEL: &str = "-";
 pub struct ReserveMsg{
     reserve: Reserve,
     arbiter_hotel: Addr<HotelWsActor>,
-    arbiter_airlines: AirlinesArbiters
+    arbiter_airlines: AirlinesArbiters,
+    arbiter_stats: Addr<Stats>
 }
 
 impl ReserveMsg {
     pub fn new(reserve: Reserve,
                arbiter_hotel: Addr<HotelWsActor>,
-               arbiter_airlines: AirlinesArbiters) -> ReserveMsg{
+               arbiter_airlines: AirlinesArbiters,
+               arbiter_stats: Addr<Stats> ) -> ReserveMsg{
         ReserveMsg {
             reserve,
             arbiter_hotel,
-            arbiter_airlines
+            arbiter_airlines,
+            arbiter_stats
         }
     }
 }
@@ -55,7 +61,7 @@ impl Handler<ReserveMsg> for ReserveActor {
 
     fn handle(&mut self, msg: ReserveMsg, _ctx: &mut Context<Self>) -> Self::Result {
         Box::pin(async move {
-            let _result = process_reserve(msg.reserve, msg.arbiter_hotel, msg.arbiter_airlines).await;
+            let _result = process_reserve(msg.reserve, msg.arbiter_hotel, msg.arbiter_airlines, msg.arbiter_stats).await;
             Ok(true)
         })
     }
@@ -82,16 +88,22 @@ async fn process_package(airlines: AirlinesArbiters, arbitrer_hotel: Addr<HotelW
     process_hotel.await.unwrap();
 }
 
-async fn process_reserve(reserve: Reserve, arbiter_hotel: Addr<HotelWsActor>, arbiter_airlines: AirlinesArbiters) {
+async fn process_reserve(reserve: Reserve, arbiter_hotel: Addr<HotelWsActor>, arbiter_airlines: AirlinesArbiters, arbiter_stats: Addr<Stats>) {
+    let initial_process_time = SystemTime::now();
     let origin = reserve.get_origin();
     let destination = reserve.get_destination();
     let airline = reserve.get_airline();
     let hotel = reserve.get_hotel();
     if hotel == NO_HOTEL {
         logger::log(format!("Procesando Vuelo con Origen {}, Destino {} y Aerolinea {}", origin, destination, airline));
-        process_flight(arbiter_airlines, Flight::new(Route::new(origin, destination), airline)).await;
+        process_flight(arbiter_airlines, Flight::new(Route::new(origin.clone(), destination.clone()), airline)).await;
     } else {
         logger::log(format!("Procesando Paquete con Origen {}, Destino {}, Aerolinea {} y Hotel {}", origin, destination, airline, hotel));
-        process_package(arbiter_airlines, arbiter_hotel, Package::new(Route::new(origin, destination), airline, hotel)).await;
+        process_package(arbiter_airlines, arbiter_hotel, Package::new(Route::new(origin.clone(), destination.clone()), airline, hotel)).await;
     }
+    let final_process_time = SystemTime::now();
+    let difference = final_process_time
+        .duration_since(initial_process_time)
+        .expect("Ocurrio un error inesperado");
+    let _ = arbiter_stats.send(UpdateStats{route: Route::new(origin, destination), process_time: difference }).await;
 }

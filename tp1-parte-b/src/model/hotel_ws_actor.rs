@@ -18,6 +18,14 @@ pub struct HotelWsActor {
 
 impl Actor for HotelWsActor {
     type Context = SyncContext<Self>;
+
+    fn started(&mut self, _ctx: &mut SyncContext<Self>) {
+        println!("HotelWs Actor is alive");
+     }
+ 
+     fn stopped(&mut self, _ctx: &mut SyncContext<Self>) {
+        println!("HotelWs Actor is stopped");
+     }
 }
 
 impl Handler<ReserveHotel> for HotelWsActor {

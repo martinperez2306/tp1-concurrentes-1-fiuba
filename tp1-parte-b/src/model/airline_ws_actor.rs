@@ -19,13 +19,21 @@ pub struct AirlineWsActor {
 
 impl Actor for AirlineWsActor {
     type Context = SyncContext<Self>;
+
+    fn started(&mut self, _ctx: &mut SyncContext<Self>) {
+        println!("AirlineWs Actor is alive");
+     }
+ 
+     fn stopped(&mut self, _ctx: &mut SyncContext<Self>) {
+        println!("AirlineWs Actor is stopped");
+     }
 }
 
 impl Handler<ReserveFlight> for AirlineWsActor {
     type Result = bool;
 
     fn handle(&mut self, reserve: ReserveFlight, _ctx: &mut <AirlineWsActor as Actor>::Context) -> Self::Result  {
-        while true {
+        loop {
             println!("Airline: {} \n origen: {} \n destino: {}", self.id, reserve.0, reserve.1);
             let mut rng = rand::thread_rng();
             let miliseconds_to_sleep = rng.gen_range(0..10);
