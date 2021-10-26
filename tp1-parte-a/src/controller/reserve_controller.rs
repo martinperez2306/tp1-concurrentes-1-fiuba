@@ -39,11 +39,7 @@ pub fn process_reserves(filename: String) {
     let stats_mutex_for_parse = stats_mutex.clone();
     let stats_mutex_for_log = stats_mutex.clone();
     let parse_reserves_thread = thread::spawn(move || {
-        parse_reserves(
-            processing_reserves_tx,
-            &filename,
-            stats_mutex_for_parse,
-        )
+        parse_reserves(processing_reserves_tx, &filename, stats_mutex_for_parse)
     });
     let log_stats_thread =
         thread::spawn(move || logs_stats(processing_reserves_rx, stats_mutex_for_log));
@@ -59,7 +55,6 @@ pub fn process_reserves(filename: String) {
         avg_reserve_processing_time
     );
     logger::log(format!("Procesamiento de Reservas terminado"));
-
 }
 
 /**
@@ -80,7 +75,7 @@ pub fn logs_stats(processing_reserves_rx: Receiver<bool>, stats_mutex: Arc<Mutex
         println!("----------------------------------------------------------");
         drop(stats_block);
         thread::sleep(Duration::from_millis(STATS_LOG_PERIOD * 1000));
-        if let Ok(stats_signal) = processing_reserves_rx.try_recv(){
+        if let Ok(stats_signal) = processing_reserves_rx.try_recv() {
             processing = stats_signal;
         }
     }

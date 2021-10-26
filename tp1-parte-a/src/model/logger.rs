@@ -14,6 +14,8 @@ pub fn log(message: String) {
                 println!("No se pudo escribir el archivo: {}", e);
             }
         }
-        Err(e) => { println!("No se pudo abrir el archivo: {}", e); }
+        Err(e) => {
+            println!("No se pudo abrir el archivo: {}", e);
+        }
     }
 }
