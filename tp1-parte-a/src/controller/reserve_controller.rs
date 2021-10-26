@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
-use std::sync::mpsc;
+use std::sync::{LockResult, mpsc, MutexGuard};
 use std::sync::mpsc::Receiver;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
@@ -32,7 +32,7 @@ const STATS_LOG_PERIOD: u64 = 3;
 pub fn process_reserves(filename: String) {
     logger::log(format!("Procesamiento de Reservas iniciado"));
     let (processing_reserves_tx, processing_reserves_rx) = mpsc::channel();
-    processing_reserves_tx.send(true).unwrap();
+    processing_reserves_tx.send(true);
     let mut processing_steps = vec![];
     let stats: Stats = Stats::new();
     let stats_mutex = Arc::new(Mutex::new(stats));
@@ -48,13 +48,20 @@ pub fn process_reserves(filename: String) {
     for step in processing_steps {
         let _ = step.join();
     }
-    let stats_block = stats_mutex.lock().unwrap();
-    let avg_reserve_processing_time = stats_block.get_avg_reserve_processing_time();
-    println!(
-        "El tiempo medio de procesamiento de una reserva es {} segundos",
-        avg_reserve_processing_time
-    );
-    logger::log(format!("Procesamiento de Reservas terminado"));
+    let stats_lock_result = stats_mutex.lock();
+    match stats_lock_result {
+        Ok(stats_block) => {
+            let avg_reserve_processing_time = stats_block.get_avg_reserve_processing_time();
+            println!(
+                "El tiempo medio de procesamiento de una reserva es {} segundos",
+                avg_reserve_processing_time
+            );
+            logger::log(format!("Procesamiento de Reservas terminado"));
+        }
+        Err(e) => {
+            println!("Algo salió mal con el stats_lock. Error: {}", e);
+        }
+    }
 }
 
 /**
@@ -63,17 +70,25 @@ pub fn process_reserves(filename: String) {
 pub fn logs_stats(processing_reserves_rx: Receiver<bool>, stats_mutex: Arc<Mutex<Stats>>) {
     let mut processing = true;
     while processing {
-        let stats_block = stats_mutex.lock().unwrap();
-        println!("---------------LAS 10 RUTAS MAS SOLICITADAS---------------");
-        let routes: HashMap<String, u32> = stats_block.get_routes();
-        let mut routes_sorted: Vec<(&String, &u32)> = routes.iter().collect();
-        routes_sorted.sort_by(|a, b| b.1.cmp(a.1));
-        routes_sorted.truncate(10);
-        for route in routes_sorted {
-            println!("La ruta {:?} fue solicitada {:?} veces", route.0, route.1);
+        let stats_lock_result = stats_mutex.lock();
+        match stats_lock_result {
+            Ok(stats_block) => {
+                println!("---------------LAS 10 RUTAS MAS SOLICITADAS---------------");
+                let routes: HashMap<String, u32> = stats_block.get_routes();
+                let mut routes_sorted: Vec<(&String, &u32)> = routes.iter().collect();
+                routes_sorted.sort_by(|a, b| b.1.cmp(a.1));
+                routes_sorted.truncate(10);
+                for route in routes_sorted {
+                    println!("La ruta {:?} fue solicitada {:?} veces", route.0, route.1);
+                }
+                println!("----------------------------------------------------------");
+                drop(stats_block);
+            }
+            Err(e) => {
+                println!("Algo salió mal con el stats_lock. Error: {}", e);
+            }
         }
-        println!("----------------------------------------------------------");
-        drop(stats_block);
+
         thread::sleep(Duration::from_millis(STATS_LOG_PERIOD * 1000));
         if let Ok(stats_signal) = processing_reserves_rx.try_recv() {
             processing = stats_signal;
@@ -135,7 +150,7 @@ pub fn parse_reserves(
         for child in reserves {
             let _ = child.join();
         }
-        processing_reserves_tx.send(false).unwrap();
+        processing_reserves_tx.send(false);
     }
 }
 
@@ -155,8 +170,11 @@ where
  * Increment route counter for Stats
  */
 pub fn increment_stats(stat_mutex: Arc<Mutex<Stats>>, route: Route) {
-    let mut stats_block = stat_mutex.lock().unwrap();
-    stats_block.increment_route_counter(route);
+    let mut stats_block_result = stat_mutex.lock();
+    match stats_block_result {
+        Ok(mut stats_block) => {stats_block.increment_route_counter(route);}
+        Err(e) => {println!("Algo salió mal con el stats_lock. Error: {}", e);}
+    }
 }
 
 pub fn process_flight(
@@ -184,8 +202,11 @@ pub fn process_flight(
         "La reserva de vuelo se proceso en {:?} segundo(s)",
         difference.as_secs()
     );
-    let mut stats_block = stat_mutex.lock().unwrap();
-    stats_block.add_reserve_processing_time(difference.as_secs());
+    let mut stats_block_result = stat_mutex.lock();
+    match stats_block_result {
+        Ok(mut stats_block) => {stats_block.add_reserve_processing_time(difference.as_secs());}
+        Err(e) => {println!("Algo salió mal con el stats_lock. Error: {}", e);}
+    }
 }
 
 pub fn process_package(
@@ -219,8 +240,11 @@ pub fn process_package(
         "La reserva de paquete se proceso en {:?} segundo(s)",
         difference.as_secs()
     );
-    let mut stats_block = stat_mutex.lock().unwrap();
-    stats_block.add_reserve_processing_time(difference.as_secs());
+    let mut stats_block_result = stat_mutex.lock();
+    match stats_block_result {
+        Ok(mut stats_block) => {stats_block.add_reserve_processing_time(difference.as_secs());}
+        Err(e) => {println!("Algo salió mal con el stats_lock. Error: {}", e);}
+    }
 }
 
 pub fn reserve_airline(
