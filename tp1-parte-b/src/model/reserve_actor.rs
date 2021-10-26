@@ -72,7 +72,7 @@ async fn process_flight(airlines: AirlinesArbiters, flight: Flight) {
     match airlines.get_airline_arbiter(airline.to_string()) {
         Some(airline_arbiter) => {
             // Search for airline
-            airline_arbiter.send(ReserveFlight(flight.get_route().get_origin(), flight.get_route().get_destination())).await;
+            let _ = airline_arbiter.send(ReserveFlight(flight.get_route().get_origin(), flight.get_route().get_destination())).await;
         }
         _ => println!("No se encontró la aerolinea: {}", airline),
     }
@@ -85,7 +85,7 @@ async fn process_package(airlines: AirlinesArbiters, arbitrer_hotel: Addr<HotelW
     // Hotel ws call
     let process_hotel = arbitrer_hotel.send(ReserveHotel(package.get_hotel()));
     process_airline.await;
-    process_hotel.await;
+    let _ = process_hotel.await;
 }
 
 async fn process_reserve(reserve: Reserve, arbiter_hotel: Addr<HotelWsActor>, arbiter_airlines: AirlinesArbiters, arbiter_stats: Addr<Stats>) {

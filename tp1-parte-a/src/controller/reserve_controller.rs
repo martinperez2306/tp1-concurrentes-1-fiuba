@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
-use std::sync::{LockResult, mpsc, MutexGuard};
+use std::sync::mpsc;
 use std::sync::mpsc::Receiver;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
@@ -32,7 +32,9 @@ const STATS_LOG_PERIOD: u64 = 3;
 pub fn process_reserves(filename: String) {
     logger::log(format!("Procesamiento de Reservas iniciado"));
     let (processing_reserves_tx, processing_reserves_rx) = mpsc::channel();
-    processing_reserves_tx.send(true);
+    if let Err(error) = processing_reserves_tx.send(true){
+        println!("Ocurrio un error enviando a traves del channel: {}", error);
+    }
     let mut processing_steps = vec![];
     let stats: Stats = Stats::new();
     let stats_mutex = Arc::new(Mutex::new(stats));
@@ -150,7 +152,9 @@ pub fn parse_reserves(
         for child in reserves {
             let _ = child.join();
         }
-        processing_reserves_tx.send(false);
+        if let Err(error) = processing_reserves_tx.send(false){
+            println!("Ocurrio un error enviando a traves del channel: {}", error);
+        }
     }
 }
 
@@ -170,7 +174,7 @@ where
  * Increment route counter for Stats
  */
 pub fn increment_stats(stat_mutex: Arc<Mutex<Stats>>, route: Route) {
-    let mut stats_block_result = stat_mutex.lock();
+    let stats_block_result = stat_mutex.lock();
     match stats_block_result {
         Ok(mut stats_block) => {stats_block.increment_route_counter(route);}
         Err(e) => {println!("Algo salió mal con el stats_lock. Error: {}", e);}
@@ -202,7 +206,7 @@ pub fn process_flight(
         "La reserva de vuelo se proceso en {:?} segundo(s)",
         difference.as_secs()
     );
-    let mut stats_block_result = stat_mutex.lock();
+    let stats_block_result = stat_mutex.lock();
     match stats_block_result {
         Ok(mut stats_block) => {stats_block.add_reserve_processing_time(difference.as_secs());}
         Err(e) => {println!("Algo salió mal con el stats_lock. Error: {}", e);}
@@ -240,7 +244,7 @@ pub fn process_package(
         "La reserva de paquete se proceso en {:?} segundo(s)",
         difference.as_secs()
     );
-    let mut stats_block_result = stat_mutex.lock();
+    let stats_block_result = stat_mutex.lock();
     match stats_block_result {
         Ok(mut stats_block) => {stats_block.add_reserve_processing_time(difference.as_secs());}
         Err(e) => {println!("Algo salió mal con el stats_lock. Error: {}", e);}
