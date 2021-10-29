@@ -1,9 +1,13 @@
 use crate::model::route::Route;
 use actix::prelude::*;
-use std::{collections::HashMap, time::Duration};
+use std::{collections::HashMap, thread::sleep, time::Duration};
 
 #[derive(Message)]
-#[rtype(result = "Result<(), std::io::Error>")]
+#[rtype(result = "()")]
+pub struct Loop;
+
+#[derive(Message)]
+#[rtype(result = "()>")]
 pub struct GetStats;
 
 #[derive(Message)]
@@ -72,9 +76,9 @@ impl Actor for Stats {
 
 /// Define handler for `Reserve String` message
 impl Handler<GetStats> for Stats {
-    type Result = Result<(), std::io::Error>;
+    type Result = ();
 
-    fn handle(&mut self, _msg: GetStats, _ctx: &mut <Stats as Actor>::Context) -> Self::Result {
+    fn handle(&mut self, _msg: GetStats, ctx: &mut <Stats as Actor>::Context) -> Self::Result {
         println!("---------------LAS 10 RUTAS MAS SOLICITADAS---------------");
         let routes: HashMap<String, u32> = self.get_routes();
         let mut routes_sorted: Vec<(&String, &u32)> = routes.iter().collect();
@@ -91,7 +95,9 @@ impl Handler<GetStats> for Stats {
             avg_reserve_processing_time
         );
         println!("----------------------------------------------------------");
-        Ok(())
+        sleep(Duration::from_secs(5));
+        let addr = ctx.address();
+        let _ = addr.try_send(GetStats);
     }
 }
 
@@ -105,6 +111,17 @@ impl Handler<UpdateStats> for Stats {
         Ok(())
     }
 }
+
+/// Define handler for `Loop` message
+impl Handler<Loop> for Stats {
+    type Result = ();
+
+    fn handle(&mut self, _msg: Loop, ctx: &mut <Stats as Actor>::Context) -> Self::Result {
+        let addr = ctx.address();
+        let _ = addr.try_send(GetStats);
+    }
+}
+
 impl Default for Stats {
     fn default() -> Self {
         Self::new()
