@@ -9,7 +9,7 @@ use crate::model::route::Route;
 use actix::prelude::*;
 use actix::{Actor, Handler};
 
-use super::flight::{Flight};
+use super::flight::Flight;
 use super::package::Package;
 use super::stats::{Stats, UpdateStats};
 
@@ -77,12 +77,12 @@ impl ProcessPackage {
     pub fn new(
         airlines: AirlinesArbiters,
         arbitrer_hotel: Addr<HotelWsActor>,
-        package: Package
+        package: Package,
     ) -> ProcessPackage {
         ProcessPackage {
             airlines,
             arbitrer_hotel,
-            package
+            package,
         }
     }
 }
@@ -91,14 +91,11 @@ impl ProcessPackage {
 #[rtype(result = "Result<bool, std::io::Error>")]
 pub struct ProcessFlight {
     arbiter_airlines: AirlinesArbiters,
-    flight: Flight
+    flight: Flight,
 }
 
 impl ProcessFlight {
-    pub fn new(
-        arbiter_airlines: AirlinesArbiters,
-        flight: Flight
-    ) -> ProcessFlight {
+    pub fn new(arbiter_airlines: AirlinesArbiters, flight: Flight) -> ProcessFlight {
         ProcessFlight {
             arbiter_airlines,
             flight,
@@ -129,11 +126,14 @@ impl Handler<ReserveMsg> for ReserveActor {
     fn handle(&mut self, msg: ReserveMsg, ctx: &mut Context<Self>) -> Self::Result {
         let addr = ctx.address();
         Box::pin(async move {
-            let _result = addr.send(ProcessReserve::new(msg.reserve,
-                msg.arbiter_hotel,
-                msg.arbiter_airlines,
-                msg.arbiter_stats,))
-            .await;
+            let _result = addr
+                .send(ProcessReserve::new(
+                    msg.reserve,
+                    msg.arbiter_hotel,
+                    msg.arbiter_airlines,
+                    msg.arbiter_stats,
+                ))
+                .await;
             Ok(true)
         })
     }
@@ -161,30 +161,34 @@ impl Handler<ProcessReserve> for ReserveActor {
                     origin, destination, airline
                 ));
                 let flight = Flight::new(Route::new(origin.clone(), destination.clone()), airline);
-                let _result_process_flight = addr.send(ProcessFlight::new(arbiter_airlines, flight)).await;
+                let _result_process_flight = addr
+                    .send(ProcessFlight::new(arbiter_airlines, flight))
+                    .await;
             } else {
                 logger::log(format!(
                     "Procesando Paquete con Origen {}, Destino {}, Aerolinea {} y Hotel {}",
                     origin, destination, airline, hotel
                 ));
-                let _result_process_package = addr.send(ProcessPackage::new(arbiter_airlines,
-                    arbiter_hotel,
-                    Package::new(
-                    Route::new(origin.clone(), destination.clone()),
-                        airline,
-                        hotel,
-                    )))
-                .await;
+                let _result_process_package = addr
+                    .send(ProcessPackage::new(
+                        arbiter_airlines,
+                        arbiter_hotel,
+                        Package::new(
+                            Route::new(origin.clone(), destination.clone()),
+                            airline,
+                            hotel,
+                        ),
+                    ))
+                    .await;
             }
             let final_process_time = SystemTime::now();
             let difference = final_process_time
                 .duration_since(initial_process_time)
                 .expect("Ocurrio un error inesperado");
-            let _ = arbiter_stats
-                .try_send(UpdateStats {
-                    route: Route::new(origin, destination),
-                    process_time: difference,
-                });
+            let _ = arbiter_stats.try_send(UpdateStats {
+                route: Route::new(origin, destination),
+                process_time: difference,
+            });
             Ok(true)
         })
     }
@@ -204,7 +208,7 @@ impl Handler<ProcessPackage> for ReserveActor {
             let process_airline = addr.send(ProcessFlight::new(airlines, flight));
             let process_hotel = arbitrer_hotel.send(ReserveHotel(hotel));
             let _result_airline = process_airline.await;
-            let _result_hotel= process_hotel.await;
+            let _result_hotel = process_hotel.await;
             Ok(true)
         })
     }
@@ -229,9 +233,14 @@ impl Handler<ProcessFlight> for ReserveActor {
                             flight.get_route().get_destination(),
                         ))
                         .await;
-                    let approve = result.unwrap();
-                    if !approve {
-                        let _result_process_flight = addr.send(ProcessFlight::new(airlines, flight)).await;
+                    match result {
+                        Ok(approve) => {
+                            if !approve {
+                                let _result_process_flight =
+                                    addr.send(ProcessFlight::new(airlines, flight)).await;
+                            }
+                        }
+                        Err(err) => println!("Error inesperado al reservar e: {}", err),
                     }
                 }
                 _ => println!("No se encontró la aerolinea: {}", airline),

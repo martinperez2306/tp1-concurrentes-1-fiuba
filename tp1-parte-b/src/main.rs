@@ -7,11 +7,11 @@ use crate::model::ping_actor::Ping;
 use crate::model::ping_actor::PingActor;
 use crate::model::receiver_actor::ReceiverActor;
 use crate::model::reserve_actor::ReserveActor;
+use crate::model::stats::Loop;
+use crate::model::stats::Stats;
 use actix::prelude::*;
 use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
 use model::receiver_actor::ReserveString;
-use crate::model::stats::Stats;
-use crate::model::stats::Loop;
 use std::clone::Clone;
 
 #[get("/ping")]
