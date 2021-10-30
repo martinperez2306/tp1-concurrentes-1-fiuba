@@ -230,7 +230,6 @@ impl Handler<ProcessFlight> for ReserveActor {
                         ))
                         .await;
                     let approve = result.unwrap();
-                    println!("Approve: {}", approve);
                     if !approve {
                         let _result_process_flight = addr.send(ProcessFlight::new(airlines, flight)).await;
                     }
