@@ -10,4 +10,3 @@ pub mod reserve;
 pub mod reserve_actor;
 pub mod route;
 pub mod stats;
-pub mod stats_loop;
